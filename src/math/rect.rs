@@ -2,7 +2,7 @@
 //! Status: interseção axis-aligned implementada.
 
 /// Retângulo para limites e colisões simples.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
     /// Coordenada horizontal da origem.
     pub x: i32,
@@ -15,6 +15,16 @@ pub struct Rect {
 }
 
 impl Rect {
+    /// Cria um retângulo com origem e dimensões.
+    pub const fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
     /// Verifica interseção com outro retângulo.
     pub fn intersects(self, other: Self) -> bool {
         let right = i64::from(self.x) + i64::from(self.width);

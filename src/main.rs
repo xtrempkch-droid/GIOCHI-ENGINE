@@ -3,17 +3,19 @@
 use anyhow::Result;
 use giochi_engine::{
     core::game_loop::{self, Game},
+    math::color::Color,
     platform::{init_sdl, Window},
+    render::{renderer::RenderContext, RenderError},
 };
-use sdl2::pixels::Color;
 
 struct DemoGame;
 
 impl Game for DemoGame {
     fn update(&mut self, _dt: f32) {}
 
-    fn render(&mut self, context: &mut giochi_engine::platform::window::RenderContext<'_>) {
-        context.clear(Color::RGB(0, 0, 0));
+    fn render(&mut self, context: &mut RenderContext<'_>) -> Result<(), RenderError> {
+        context.clear(Color::rgb(0, 0, 0));
+        Ok(())
     }
 }
 

@@ -5,7 +5,7 @@
 
 use crate::{
     core::game_loop::{self, Game},
-    platform::window::RenderContext,
+    render::renderer::RenderContext,
 };
 
 /// Configuração básica usada ao criar uma instância da engine.
@@ -44,11 +44,16 @@ impl GameEngine {
     }
 
     /// Executa o loop fixo até o callback de eventos indicar o encerramento.
-    pub fn run<G, F>(&mut self, game: &mut G, context: &mut RenderContext<'_>, keep_running: F)
+    pub fn run<G, F>(
+        &mut self,
+        game: &mut G,
+        context: &mut RenderContext<'_>,
+        keep_running: F,
+    ) -> anyhow::Result<()>
     where
         G: Game,
         F: FnMut(&mut G) -> bool,
     {
-        game_loop::run_with_context(game, context, keep_running);
+        game_loop::run_with_context(game, context, keep_running)
     }
 }

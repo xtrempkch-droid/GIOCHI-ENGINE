@@ -9,8 +9,9 @@ use crate::{
     core::time::Time,
     platform::{
         sdl::{Sdl, SdlEvent},
-        window::{RenderContext, Window},
+        window::Window,
     },
+    render::{renderer::RenderContext, RenderError},
 };
 
 /// Passo fixo de simulação, equivalente a 60 atualizações por segundo.
@@ -22,8 +23,8 @@ pub const MAX_FRAME_TIME: f64 = 0.25;
 pub trait Game {
     /// Atualiza a simulação em segundos.
     fn update(&mut self, dt: f32);
-    /// Desenha um quadro usando a abstração de renderização da plataforma.
-    fn render(&mut self, ctx: &mut RenderContext<'_>);
+    /// Desenha um quadro e propaga falhas do backend de renderização.
+    fn render(&mut self, ctx: &mut RenderContext<'_>) -> Result<(), RenderError>;
 }
 
 /// Executa o jogo até receber um evento de saída ou a tecla Escape.
@@ -39,27 +40,37 @@ pub fn run<G: Game>(game: &mut G, window: &mut Window, sdl: &mut Sdl) -> Result<
         },
         |game| {
             let mut context: RenderContext<'_> = window.render_context();
-            game.render(&mut context);
+            game.render(&mut context)?;
             window.present();
+            Ok(())
         },
-    );
+    )?;
     Ok(())
 }
 
 /// Executa o mesmo loop fixo com um contexto e uma rotina de eventos fornecidos pelo consumidor.
-pub fn run_with_context<G, F>(game: &mut G, ctx: &mut RenderContext<'_>, keep_running: F)
+pub fn run_with_context<G, F>(
+    game: &mut G,
+    ctx: &mut RenderContext<'_>,
+    keep_running: F,
+) -> anyhow::Result<()>
 where
     G: Game,
     F: FnMut(&mut G) -> bool,
 {
-    run_fixed(game, keep_running, |game| game.render(ctx));
+    run_fixed(game, keep_running, |game| {
+        game.render(ctx)?;
+        ctx.present();
+        Ok(())
+    })?;
+    Ok(())
 }
 
-fn run_fixed<G, P, R>(game: &mut G, mut poll_events: P, mut render: R)
+fn run_fixed<G, P, R>(game: &mut G, mut poll_events: P, mut render: R) -> Result<(), RenderError>
 where
     G: Game,
     P: FnMut(&mut G) -> bool,
-    R: FnMut(&mut G),
+    R: FnMut(&mut G) -> Result<(), RenderError>,
 {
     let fixed_dt = f64::from(FIXED_DT);
     let start = Instant::now();
@@ -75,7 +86,7 @@ where
             accumulator -= fixed_dt;
         }
 
-        render(game);
+        render(game)?;
 
         next_frame += Duration::from_secs_f64(fixed_dt);
         let now = Instant::now();
@@ -85,4 +96,5 @@ where
             next_frame = now;
         }
     }
+    Ok(())
 }

@@ -28,15 +28,22 @@
   `core::game_loop` trata somente a API da plataforma e o contexto de renderização.
 - KMSDRM é selecionado somente quando `SDL_VIDEODRIVER` não foi definido, preservando a escolha
   explícita de drivers desktop ou de configuração do usuário.
+- `RenderContext` é implementado sobre SDL2 em `render`, enquanto `Window` permanece na camada
+  `platform`; jogos usam apenas tipos de cor/retângulo próprios e erros tipados.
+- `Window` possui o `TextureCreator` SDL2; `render_context_with_loader` empresta o canvas e a
+  fábrica ao mesmo tempo, e o loader mantém SDL_image ativo. Texturas têm lifetime vinculado ao
+  loader, impedindo que sobrevivam ao canvas que as criou.
+- `Game::render` retorna `RenderError`, propagado pelo loop ao chamador, para não ocultar falhas de
+  desenho.
 
 ## Estado da implementação
 
-- Implementados: inicialização SDL2, janela/canvas, desenho de retângulo, loop fixo, estruturas
-  básicas de matemática/cache/estado e demo de teclado.
-- Base parcial: input portátil, cena, câmera/sprite, textura, carregamento de assets e áudio.
-  Esses módulos não abrem ainda recursos SDL_image, SDL_mixer nem dispositivos de gamepad.
+- Implementados: inicialização SDL2, janela/canvas, loop fixo, renderização de primitivas e
+  texturas, sprites, câmera mundo/tela e estruturas básicas de matemática/cache/estado.
+- Base parcial: input portátil, cenas, cache de texturas, áudio e gamepad. A textura já usa
+  SDL_image, mas a integração do cache de recursos, mixer e controle continua nas fases seguintes.
 - Erros de biblioteca usam `thiserror`; aplicações podem agregar contexto com `anyhow`.
 - `thiserror` fornece erros tipados e sem dependência de contexto de aplicação na biblioteca;
   `anyhow` facilita a composição e apresentação de erros no binário e nos exemplos.
-- O binário principal é a demonstração SDL2 mínima de janela preta e saída por Escape; exemplos
-  independentes demonstram movimento e áudio sem ampliar o escopo do demo básico.
+- O binário principal permanece uma demonstração SDL2 mínima de janela preta e saída por Escape;
+  os exemplos independentes demonstram retângulo animado e sprite controlado pelo teclado.

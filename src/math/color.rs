@@ -1,5 +1,5 @@
 //! Cor RGBA de oito bits por canal.
-//! Status: tipo RGBA e construtor RGB implementados.
+//! Status: tipo de cor e construtores RGB/RGBA implementados.
 
 /// Cor com canais vermelho, verde, azul e alfa.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +22,16 @@ impl Color {
             green,
             blue,
             alpha: u8::MAX,
+        }
+    }
+
+    /// Cria uma cor RGBA.
+    pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
         }
     }
 }

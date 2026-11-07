@@ -7,7 +7,7 @@ pub mod sdl;
 pub mod window;
 
 pub use sdl::{init_sdl, Sdl, SdlEvent};
-pub use window::Window;
+pub use window::{RenderContext, Window};
 
 /// Falhas na inicialização SDL2, criação de janela ou recursos de plataforma.
 #[derive(Debug, Error)]
@@ -26,7 +26,7 @@ pub enum PlatformError {
     /// A janela SDL2 não pôde ser criada.
     #[error("não foi possível criar a janela SDL2: {0}")]
     Window(String),
-    /// O canvas acelerado não pôde ser criado.
+    /// O canvas de desenho não pôde ser criado.
     #[error("não foi possível criar o canvas SDL2: {0}")]
     Canvas(String),
 }

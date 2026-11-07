@@ -1,11 +1,12 @@
-//! Testes de integração que não exigem janela nem dispositivo de áudio.
-//! Status: testes headless de cache de assets e colisão retangular.
+//! Testes de integração headless com SDL2 dummy e operações matemáticas básicas.
+//! Status: cache, interseção, encerramento do loop e renderização headless cobertos.
 
 use giochi_engine::{
     assets::manager::AssetManager,
     core::game_loop::{self, Game},
     math::rect::Rect,
-    platform::{init_sdl, window::RenderContext, Window},
+    platform::{init_sdl, Window},
+    render::{renderer::RenderContext, texture::Texture, RenderError},
 };
 use sdl2::{
     event::Event,
@@ -60,6 +61,35 @@ fn game_loop_exits_when_escape_is_queued() {
 
     assert_eq!(game.updates, 0);
     assert_eq!(game.renders, 0);
+
+    let (mut context, loader) = window
+        .render_context_with_loader()
+        .expect("SDL_image deve inicializar com o driver dummy");
+    let texture = Texture::from_rgba(
+        &loader,
+        2,
+        2,
+        &[
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+        ],
+    )
+    .expect("a textura RGBA deve ser criada");
+    assert_eq!(texture.dimensions(), (2, 2));
+    let black = giochi_engine::math::color::Color::rgb(0, 0, 0);
+    let red = giochi_engine::math::color::Color::rgb(255, 0, 0);
+    context.clear(black);
+    context
+        .draw_rect(Rect::new(1, 1, 4, 4), red)
+        .expect("retângulo deve ser desenhado");
+    context
+        .draw_texture(&texture, Rect::new(8, 8, 16, 16))
+        .expect("textura deve ser desenhada");
+    context.present();
+
+    assert!(matches!(
+        Texture::from_rgba(&loader, 2, 2, &[0; 4]),
+        Err(RenderError::InvalidImageData { .. })
+    ));
 }
 
 #[derive(Default)]
@@ -73,7 +103,8 @@ impl Game for CountingGame {
         self.updates += 1;
     }
 
-    fn render(&mut self, _context: &mut RenderContext<'_>) {
+    fn render(&mut self, _context: &mut RenderContext<'_>) -> Result<(), RenderError> {
         self.renders += 1;
+        Ok(())
     }
 }
