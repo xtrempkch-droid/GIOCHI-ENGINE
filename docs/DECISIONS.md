@@ -1,5 +1,13 @@
 # Decisões de arquitetura
 
+## Matemática
+
+- `Rect::intersects` exige área positiva nos dois retângulos: encostar nas bordas não é
+  sobreposição. Sem essa regra, um retângulo `width = 0` (projétil desativado, área de gatilho
+  vazia) colidiria com qualquer coisa que contivesse sua coordenada. Coberto por teste.
+- As somas de origem e tamanho são feitas em `i64` para não estourar quando um `Rect` chega perto
+  de `i32::MAX`; há teste com os limites.
+
 ## Dependências e targets
 
 - A engine é um único pacote Cargo com biblioteca `giochi_engine` e binário `giochi-demo`, para
@@ -57,6 +65,14 @@
   quando um novo dispositivo é adicionado.
 - A zona morta padrão dos analógicos é 0.2, configurável com `GamepadState::set_deadzone`. O
   controle é declarado antes do subsistema no struct para ser liberado primeiro.
+
+## Matemática
+
+- `Rect::intersects` exige área positiva nos dois retângulos: encostar nas bordas não é
+  sobreposição. Sem essa regra, um retângulo `width = 0` (projétil desativado, área de gatilho
+  vazia) colidiria com qualquer coisa que contivesse sua coordenada. Coberto por teste.
+- As somas de origem e tamanho são feitas em `i64` para não estourar quando um `Rect` chega perto
+  de `i32::MAX`; há teste com os limites.
 
 ## Dependências
 

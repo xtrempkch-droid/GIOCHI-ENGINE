@@ -216,8 +216,10 @@ Data: 2026-11-06
 
 - A imagem do GIOCHI KONSOL OS não traz backend ALSA no SDL2, então o áudio real continua
   indisponível no aparelho (a engine degrada para silêncio).
-- Cobertura de testes concentrada: `platform`, `assets` e `math` não têm testes unitários próprios
-  (assets e math são exercitados pela integração). Não há medição de cobertura no CI.
+- Cobertura unitária ampliada: `math` (interseção, limites, cor) e `assets` (`CacheStats`,
+  `AssetManager`, `clear`) ganharam testes próprios. `platform` continua coberto apenas pela
+  integração, porque o SDL2 admite um único contexto por processo e os testes de janela já
+  serializam esse uso. Não há medição de cobertura no CI.
 - PRs #2/#3/#4 do Dependabot (checkout, upload-artifact, setup-qemu) seguem abertos; exigem
   Node 24 no runner, por isso o CI emite aviso de deprecação do Node 20.
 - Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem

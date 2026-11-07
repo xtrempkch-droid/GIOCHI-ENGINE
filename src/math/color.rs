@@ -35,3 +35,33 @@ impl Color {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rgb_is_opaque() {
+        let color = Color::rgb(10, 20, 30);
+        assert_eq!((color.red, color.green, color.blue), (10, 20, 30));
+        assert_eq!(color.alpha, u8::MAX);
+    }
+
+    #[test]
+    fn rgba_keeps_alpha() {
+        let color = Color::rgba(1, 2, 3, 4);
+        assert_eq!(
+            (color.red, color.green, color.blue, color.alpha),
+            (1, 2, 3, 4)
+        );
+    }
+
+    #[test]
+    fn default_is_transparent_black() {
+        let color = Color::default();
+        assert_eq!(
+            (color.red, color.green, color.blue, color.alpha),
+            (0, 0, 0, 0)
+        );
+    }
+}

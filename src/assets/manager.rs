@@ -255,3 +255,70 @@ impl Default for FontCache<'_> {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cache_stats_track_hits_misses_and_requests() {
+        let mut stats = CacheStats::default();
+        assert_eq!(
+            (
+                stats.hits(),
+                stats.misses(),
+                stats.requests(),
+                stats.loads()
+            ),
+            (0, 0, 0, 0)
+        );
+
+        stats.hits += 3;
+        stats.misses += 2;
+        assert_eq!(stats.requests(), 5);
+        assert_eq!(stats.loads(), 2, "loads é o número de cargas reais");
+
+        stats.reset();
+        assert_eq!(stats.requests(), 0);
+    }
+
+    #[test]
+    fn generic_asset_manager_replaces_and_counts() {
+        let mut manager = AssetManager::default();
+        assert!(manager.is_empty());
+
+        assert_eq!(manager.insert("a", 1), None);
+        assert_eq!(
+            manager.insert("a", 2),
+            Some(1),
+            "substituição devolve o antigo"
+        );
+        assert_eq!(manager.get("a"), Some(&2));
+        assert_eq!(manager.get("b"), None);
+        assert_eq!(manager.len(), 1);
+    }
+
+    #[test]
+    fn resource_manager_clear_empties_every_cache_and_resets_stats() {
+        let mut resources = ResourceManager::new();
+        resources.stats.hits += 4;
+        resources.stats.misses += 2;
+
+        resources.clear();
+
+        assert!(resources.is_empty());
+        assert_eq!(resources.texture_count(), 0);
+        assert_eq!(resources.sound_count(), 0);
+        assert_eq!(resources.music_count(), 0);
+        assert_eq!(resources.stats().requests(), 0);
+    }
+
+    #[test]
+    fn font_cache_starts_empty() {
+        let mut fonts = FontCache::new();
+        assert!(fonts.is_empty());
+        assert_eq!(fonts.len(), 0);
+        fonts.clear();
+        assert_eq!(fonts.stats().requests(), 0);
+    }
+}

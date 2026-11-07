@@ -42,6 +42,13 @@ Primeira versão funcional da engine, validada em hardware ARM64 com KMSDRM.
 - **Documentação**: `ARCHITECTURE`, `BUILD`, `CROSS_COMPILE`, `KMSDRM`, `DECISIONS`, `API_GUIDE`,
   `PROGRESS`, `CONTRIBUTING` e templates de issue/PR.
 
+### Corrigido
+
+- `math::Rect::intersects` considerava retângulos sem área (largura ou altura zero) como
+  colisão. Agora retângulos vazios nunca interseptam, o que evita falsos positivos em
+  projéteis/áreas desativadas. A comparação continua em `i64` para não estourar perto de
+  `i32::MAX`, e o novo `Rect::is_empty` torna a regra explícita.
+
 ### Validado
 
 - `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo doc` e
