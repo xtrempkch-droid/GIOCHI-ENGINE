@@ -5,11 +5,13 @@ use giochi_engine::{
     assets::AssetError,
     assets::{manager::AssetManager, FontLoader, ResourceManager},
     audio::{AudioSystem, MixerConfig},
+    core::engine::{Engine, EngineConfig},
     core::game_loop::{self, Game},
     input::Input,
-    math::rect::Rect,
+    math::{color::Color, rect::Rect},
     platform::{init_sdl, Window},
     render::{renderer::RenderContext, texture::Texture, RenderError},
+    scene::{Scene, SceneContext},
 };
 use sdl2::{
     event::Event,
@@ -316,4 +318,162 @@ fn font_loader_reports_missing_font_file() {
         loader.load("/caminho/que/nao/existe.ttf", 16),
         Err(AssetError::InvalidPath { .. })
     ));
+}
+
+#[derive(Default)]
+struct SceneStats {
+    enters: usize,
+    updates: usize,
+    renders: usize,
+    exits: usize,
+}
+
+/// Cena de teste que registra quantas chamadas do ciclo de vida recebeu.
+struct RecordingScene {
+    stats: std::rc::Rc<std::cell::RefCell<SceneStats>>,
+    seconds: f32,
+}
+
+impl Scene for RecordingScene {
+    fn on_enter(&mut self, _ctx: &mut SceneContext<'_, '_>) {
+        self.stats.borrow_mut().enters += 1;
+    }
+
+    fn on_exit(&mut self) {
+        self.stats.borrow_mut().exits += 1;
+    }
+
+    fn update(&mut self, dt: f32, _input: &Input) {
+        self.seconds += dt;
+        self.stats.borrow_mut().updates += 1;
+    }
+
+    fn render(&mut self, ctx: &mut RenderContext<'_>) -> Result<(), RenderError> {
+        ctx.clear(Color::rgb(10, 20, 30));
+        self.stats.borrow_mut().renders += 1;
+        Ok(())
+    }
+}
+
+#[test]
+fn engine_steps_initial_scene_through_lifecycle() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_VIDEODRIVER", "dummy");
+    let sdl = init_sdl().expect("o driver SDL2 dummy deve inicializar");
+    let mut window =
+        Window::new(&sdl, "engine headless", 64, 48).expect("o driver dummy deve criar uma janela");
+    let mut engine = Engine::new(
+        sdl,
+        &mut window,
+        EngineConfig::new("engine", 64, 48).with_audio(false),
+    )
+    .expect("a engine deve montar");
+
+    let stats = std::rc::Rc::new(std::cell::RefCell::new(SceneStats::default()));
+    engine.scenes_mut().push(Box::new(RecordingScene {
+        stats: std::rc::Rc::clone(&stats),
+        seconds: 0.0,
+    }));
+
+    let running = engine.step(0.016).expect("um quadro deve ser desenhado");
+    assert!(running);
+    assert_eq!(
+        stats.borrow().enters,
+        1,
+        "on_enter deve rodar no primeiro quadro"
+    );
+    assert_eq!(stats.borrow().updates, 1);
+    assert_eq!(stats.borrow().renders, 1);
+
+    engine.step(0.016).expect("segundo quadro");
+    assert_eq!(stats.borrow().renders, 2);
+    assert_eq!(stats.borrow().enters, 1, "on_enter não deve repetir");
+}
+
+#[test]
+fn engine_replace_transition_calls_exit_and_enter() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_VIDEODRIVER", "dummy");
+    let sdl = init_sdl().expect("o driver SDL2 dummy deve inicializar");
+    let mut window =
+        Window::new(&sdl, "engine replace", 64, 48).expect("o driver dummy deve criar uma janela");
+    let mut engine = Engine::new(
+        sdl,
+        &mut window,
+        EngineConfig::new("engine", 64, 48).with_audio(false),
+    )
+    .expect("a engine deve montar");
+
+    let first = std::rc::Rc::new(std::cell::RefCell::new(SceneStats::default()));
+    let second = std::rc::Rc::new(std::cell::RefCell::new(SceneStats::default()));
+    engine.scenes_mut().push(Box::new(RecordingScene {
+        stats: std::rc::Rc::clone(&first),
+        seconds: 0.0,
+    }));
+    engine.step(0.016).expect("primeiro quadro");
+
+    engine.scenes_mut().replace(Box::new(RecordingScene {
+        stats: std::rc::Rc::clone(&second),
+        seconds: 0.0,
+    }));
+    engine.step(0.016).expect("quadro após a troca");
+
+    assert_eq!(first.borrow().exits, 1, "a cena substituída recebe on_exit");
+    assert_eq!(
+        second.borrow().enters,
+        1,
+        "a nova cena recebe on_enter ao fim do quadro"
+    );
+    assert_eq!(
+        second.borrow().renders,
+        0,
+        "a transição é aplicada depois do desenho, então ela desenha no quadro seguinte"
+    );
+
+    engine.step(0.016).expect("quadro seguinte");
+    assert_eq!(second.borrow().renders, 1);
+    assert_eq!(engine.scenes().depth(), 1);
+}
+
+#[test]
+fn engine_run_exits_when_escape_is_queued() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_VIDEODRIVER", "dummy");
+    let sdl = init_sdl().expect("o driver SDL2 dummy deve inicializar");
+    let mut window =
+        Window::new(&sdl, "engine escape", 32, 32).expect("o driver dummy deve criar uma janela");
+    let sdl_ctx = sdl.ctx.clone();
+    let engine = Engine::new(
+        sdl,
+        &mut window,
+        EngineConfig::new("engine", 32, 32).with_audio(false),
+    )
+    .expect("a engine deve montar");
+
+    sdl_ctx
+        .event()
+        .expect("o subsistema de eventos deve estar ativo")
+        .push_event(Event::KeyDown {
+            timestamp: 0,
+            window_id: 0,
+            keycode: Some(Keycode::Escape),
+            scancode: None,
+            keymod: Mod::NOMOD,
+            repeat: false,
+        })
+        .expect("o evento Escape deve ser enfileirado");
+
+    let stats = std::rc::Rc::new(std::cell::RefCell::new(SceneStats::default()));
+    engine
+        .run(Box::new(RecordingScene {
+            stats: std::rc::Rc::clone(&stats),
+            seconds: 0.0,
+        }))
+        .expect("a engine deve encerrar sem erro");
+
+    assert_eq!(
+        stats.borrow().renders,
+        0,
+        "Escape encerra antes do primeiro desenho"
+    );
 }

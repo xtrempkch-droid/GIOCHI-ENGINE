@@ -67,6 +67,27 @@ pub fn run_with_context<G: Game>(
     Ok(())
 }
 
+/// Executa um loop de passo fixo sem exigir a trait [`Game`].
+///
+/// Útil para fachadas que coordenam cenas: `poll` informa se o loop continua,
+/// `update` roda uma vez por passo fixo e `render` desenha o quadro.
+pub fn run_frames<P, U, R>(mut poll: P, mut update: U, mut render: R) -> Result<(), RenderError>
+where
+    P: FnMut() -> bool,
+    U: FnMut(f32),
+    R: FnMut() -> Result<(), RenderError>,
+{
+    let mut stepper = FixedStepper::new();
+    while poll() {
+        for _ in 0..stepper.advance() {
+            update(FIXED_DT);
+        }
+        render()?;
+        stepper.wait();
+    }
+    Ok(())
+}
+
 fn run_fixed<G, P, R>(
     game: &mut G,
     input: &mut Input,
@@ -78,29 +99,61 @@ where
     P: FnMut(&mut Input) -> bool,
     R: FnMut(&mut G) -> Result<(), RenderError>,
 {
-    let fixed_dt = f64::from(FIXED_DT);
-    let start = Instant::now();
-    let mut time = Time::new(start);
-    let mut accumulator = 0.0_f64;
-    let mut next_frame = start;
+    let mut stepper = FixedStepper::new();
 
     while poll_events(input) {
-        accumulator += f64::from(time.tick(Instant::now()).min(MAX_FRAME_TIME as f32));
-
-        while accumulator >= fixed_dt {
+        for _ in 0..stepper.advance() {
             game.update(FIXED_DT, input);
-            accumulator -= fixed_dt;
         }
-
         render(game)?;
-
-        next_frame += Duration::from_secs_f64(fixed_dt);
-        let now = Instant::now();
-        if next_frame > now {
-            std::thread::sleep(next_frame - now);
-        } else {
-            next_frame = now;
-        }
+        stepper.wait();
     }
     Ok(())
+}
+
+/// Contabiliza tempo decorrido em passos fixos e limita a taxa de quadros.
+///
+/// É a peça reutilizável do loop: `advance` informa quantas atualizações de
+/// [`FIXED_DT`] devem rodar no quadro e `wait` mantém a cadência de 60 Hz.
+pub struct FixedStepper {
+    time: Time,
+    accumulator: f64,
+    next_frame: Instant,
+}
+
+impl FixedStepper {
+    /// Inicia a contagem a partir do instante atual.
+    pub fn new() -> Self {
+        let start = Instant::now();
+        Self {
+            time: Time::new(start),
+            accumulator: 0.0,
+            next_frame: start,
+        }
+    }
+
+    /// Incorpora o tempo desde o último quadro e devolve quantos passos rodar.
+    pub fn advance(&mut self) -> usize {
+        self.accumulator += f64::from(self.time.tick(Instant::now()).min(MAX_FRAME_TIME as f32));
+        let steps = (self.accumulator / f64::from(FIXED_DT)).floor() as usize;
+        self.accumulator -= steps as f64 * f64::from(FIXED_DT);
+        steps
+    }
+
+    /// Dorme até o próximo quadro para não consumir CPU além de 60 Hz.
+    pub fn wait(&mut self) {
+        self.next_frame += Duration::from_secs_f64(f64::from(FIXED_DT));
+        let now = Instant::now();
+        if self.next_frame > now {
+            std::thread::sleep(self.next_frame - now);
+        } else {
+            self.next_frame = now;
+        }
+    }
+}
+
+impl Default for FixedStepper {
+    fn default() -> Self {
+        Self::new()
+    }
 }

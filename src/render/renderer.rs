@@ -12,18 +12,33 @@ use super::{texture::Texture, RenderError};
 /// Contexto de desenho que empresta temporariamente o canvas SDL2.
 pub struct RenderContext<'a> {
     canvas: &'a mut Canvas<SdlWindow>,
+    cleared: bool,
 }
 
 impl<'a> RenderContext<'a> {
     /// Empacota um canvas SDL2 existente.
     pub(crate) fn new(canvas: &'a mut Canvas<SdlWindow>) -> Self {
-        Self { canvas }
+        Self {
+            canvas,
+            cleared: false,
+        }
     }
 
     /// Limpa a área de desenho com a cor indicada.
     pub fn clear(&mut self, color: Color) {
         self.canvas.set_draw_color(to_sdl_color(color));
         self.canvas.clear();
+        self.cleared = true;
+    }
+
+    /// Limpa o quadro apenas se a cena ainda não tiver feito isso.
+    ///
+    /// Garante um fundo definido sem duplicar a limpeza quando a cena escolhe
+    /// sua própria cor.
+    pub fn ensure_cleared(&mut self, color: Color) {
+        if !self.cleared {
+            self.clear(color);
+        }
     }
 
     /// Desenha um retângulo preenchido.

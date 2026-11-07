@@ -1,17 +1,18 @@
-//! Demo mínimo que inicializa SDL2, limpa a tela e encerra com Escape.
+//! Demo mínimo da fachada `Engine`: janela preta e saída por Escape.
 
 use anyhow::Result;
 use giochi_engine::{
-    core::game_loop::{self, Game},
+    core::engine::{bootstrap, EngineConfig},
     input::Input,
     math::color::Color,
-    platform::{init_sdl, Window},
     render::{renderer::RenderContext, RenderError},
+    scene::Scene,
 };
 
-struct DemoGame;
+/// Cena inicial do binário de demonstração.
+struct DemoScene;
 
-impl Game for DemoGame {
+impl Scene for DemoScene {
     fn update(&mut self, _dt: f32, _input: &Input) {}
 
     fn render(&mut self, context: &mut RenderContext<'_>) -> Result<(), RenderError> {
@@ -22,8 +23,6 @@ impl Game for DemoGame {
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut sdl = init_sdl()?;
-    let mut window = Window::new(&sdl, "GIOCHI-SYSTEM Engine", 1280, 720)?;
-    let mut game = DemoGame;
-    game_loop::run(&mut game, &mut window, &mut sdl)
+    let config = EngineConfig::new("GIOCHI-SYSTEM Engine", 1280, 720);
+    bootstrap(config, Box::new(DemoScene)).map_err(anyhow::Error::msg)
 }

@@ -7,7 +7,7 @@ pub mod sdl;
 pub mod window;
 
 pub use sdl::{init_sdl, Sdl};
-pub use window::{RenderContext, Window};
+pub use window::{RenderContext, RenderTarget, Window};
 
 /// Falhas na inicialização SDL2, criação de janela ou recursos de plataforma.
 #[derive(Debug, Error)]

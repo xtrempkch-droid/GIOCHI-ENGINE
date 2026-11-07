@@ -1,12 +1,11 @@
 //! Move uma textura procedural com setas, WASD ou analógico do gamepad.
-//! Status: exemplo funcional de textura, sprite e entrada unificada.
+//! Status: exemplo funcional de `Engine`, cena, textura procedural e entrada.
 
 use std::rc::Rc;
 
 use anyhow::Result;
 use giochi_engine::{
-    core::engine::{EngineConfig, GameEngine},
-    core::game_loop::Game,
+    core::engine::{Engine, EngineConfig},
     input::Input,
     math::{color::Color, rect::Rect},
     platform::{init_sdl, Window},
@@ -16,15 +15,16 @@ use giochi_engine::{
         texture::{Texture, TextureLoader},
         RenderError,
     },
+    scene::Scene,
 };
 
-struct MovingSprite<'a> {
-    sprite: Sprite<'a>,
+struct MovingSprite<'w> {
+    sprite: Sprite<'w>,
     x: f32,
     y: f32,
 }
 
-impl Game for MovingSprite<'_> {
+impl Scene for MovingSprite<'_> {
     fn update(&mut self, dt: f32, input: &Input) {
         let direction =
             (input.keyboard.movement() + input.gamepad.left_stick()).clamp_length_max(1.0);
@@ -42,32 +42,26 @@ impl Game for MovingSprite<'_> {
 }
 
 fn main() -> Result<()> {
-    let mut sdl = init_sdl()?;
-    let config = EngineConfig {
-        width: 640,
-        height: 480,
-    };
-    let mut window = Window::new(
-        &sdl,
-        "GIOCHI-ENGINE — Sprite móvel",
-        config.width,
-        config.height,
-    )?;
-    let (mut context, loader) = window.render_context_with_loader()?;
-    let texture = Rc::new(create_procedural_texture(&loader)?);
-    let mut game = MovingSprite {
+    env_logger::init();
+    let sdl = init_sdl()?;
+    let config = EngineConfig::new("GIOCHI-ENGINE — Sprite móvel", 640, 480).with_audio(false);
+    let mut window = Window::new(&sdl, &config.title, config.width, config.height)?;
+    let engine = Engine::new(sdl, &mut window, config)?;
+
+    let loader = engine.texture_loader()?;
+    let texture = Rc::new(procedural_texture(&loader)?);
+    let scene = MovingSprite {
         sprite: Sprite::new(texture),
         x: 300.0,
         y: 220.0,
     };
 
-    let mut engine = GameEngine::new(config);
-    engine.run(&mut game, &mut context, &mut sdl)
+    engine.run(Box::new(scene))?;
+    Ok(())
 }
 
-fn create_procedural_texture<'loader, 'window>(
-    loader: &'loader TextureLoader<'window>,
-) -> Result<Texture<'loader>, RenderError> {
+/// Gera um ladrilho 64x64 com borda amarela e xadrez azul, sem arquivos externos.
+fn procedural_texture<'w>(loader: &TextureLoader<'w>) -> Result<Texture<'w>, RenderError> {
     let mut pixels = Vec::with_capacity(64 * 64 * 4);
     for y in 0..64 {
         for x in 0..64 {

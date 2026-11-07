@@ -31,10 +31,19 @@ impl Sdl {
     ///
     /// Retorna `false` quando a janela pede para fechar ou quando Escape é pressionado.
     pub fn poll_input(&mut self, input: &mut Input) -> bool {
+        self.poll_frame(input).0
+    }
+
+    /// Coleta eventos, atualiza a entrada e devolve os eventos para as cenas.
+    ///
+    /// O booleano indica se o loop deve continuar; os eventos retornados já foram
+    /// aplicados à entrada e podem ser encaminhados sem reprocessá-la.
+    pub fn poll_frame(&mut self, input: &mut Input) -> (bool, Vec<Event>) {
         let events = self.poll_raw_events();
         input.begin_frame();
         input.update(&events);
-        !events.iter().any(Self::requests_exit)
+        let keep_running = !events.iter().any(Self::requests_exit);
+        (keep_running, events)
     }
 
     fn requests_exit(event: &Event) -> bool {

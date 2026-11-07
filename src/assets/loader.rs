@@ -51,21 +51,21 @@ pub fn read_bytes(path: impl AsRef<Path>) -> Result<Vec<u8>, AssetError> {
 }
 
 /// Carrega uma textura de imagem pelo caminho.
-pub fn load_texture<'a>(
-    loader: &'a TextureLoader<'_>,
+pub fn load_texture<'w>(
+    loader: &TextureLoader<'w>,
     path: impl AsRef<Path>,
-) -> Result<Texture<'a>, AssetError> {
+) -> Result<Texture<'w>, AssetError> {
     let path = path.as_ref();
     read_bytes(path)?;
     Texture::from_file(loader, path).map_err(|error| texture_error(path, error))
 }
 
 /// Carrega uma textura a partir de bytes já lidos do disco.
-pub fn load_texture_bytes<'a>(
-    loader: &'a TextureLoader<'_>,
+pub fn load_texture_bytes<'w>(
+    loader: &TextureLoader<'w>,
     path: impl AsRef<Path>,
     bytes: &[u8],
-) -> Result<Texture<'a>, AssetError> {
+) -> Result<Texture<'w>, AssetError> {
     let path = path.as_ref();
     Texture::from_bytes(loader, bytes).map_err(|error| texture_error(path, error))
 }

@@ -1,5 +1,5 @@
 //! Caches de recursos carregados, com estatísticas de acerto e falta.
-//! Status: cache genérico e ResourceManager de texturas, sons, músicas e fontes implementados.
+//! Status: cache genérico, ResourceManager e FontCache implementados.
 
 use std::{
     collections::HashMap,
@@ -81,24 +81,23 @@ impl CacheStats {
 
 /// Cache de recursos compartilhados por `Rc`.
 ///
-/// As texturas e fontes emprestam o criador SDL que as originou; o lifetime
-/// `'a` impede que o cache sobreviva à janela ou ao `FontLoader`.
-pub struct ResourceManager<'a> {
-    textures: HashMap<PathBuf, Rc<Texture<'a>>>,
+/// As texturas emprestam o criador SDL da janela; o lifetime `'w` impede que o
+/// cache sobreviva ao canvas que as originou. Fontes ficam em [`FontCache`]
+/// porque dependem do `Sdl2TtfContext` de um `FontLoader` específico.
+pub struct ResourceManager<'w> {
+    textures: HashMap<PathBuf, Rc<Texture<'w>>>,
     sounds: HashMap<PathBuf, Rc<Sound>>,
     music: HashMap<PathBuf, Rc<MusicTrack>>,
-    fonts: HashMap<(PathBuf, u16), Rc<Font<'a, 'static>>>,
     stats: CacheStats,
 }
 
-impl<'a> ResourceManager<'a> {
+impl<'w> ResourceManager<'w> {
     /// Cria um cache vazio.
     pub fn new() -> Self {
         Self {
             textures: HashMap::new(),
             sounds: HashMap::new(),
             music: HashMap::new(),
-            fonts: HashMap::new(),
             stats: CacheStats::default(),
         }
     }
@@ -106,9 +105,9 @@ impl<'a> ResourceManager<'a> {
     /// Carrega (ou reutiliza) uma textura pelo caminho.
     pub fn texture(
         &mut self,
-        loader: &'a TextureLoader<'_>,
+        loader: &TextureLoader<'w>,
         path: impl AsRef<Path>,
-    ) -> Result<Rc<Texture<'a>>, AssetError> {
+    ) -> Result<Rc<Texture<'w>>, AssetError> {
         let path = path.as_ref();
         if let Some(texture) = self.textures.get(path) {
             self.stats.hits += 1;
@@ -147,25 +146,6 @@ impl<'a> ResourceManager<'a> {
         Ok(music)
     }
 
-    /// Carrega (ou reutiliza) uma fonte pelo par caminho/corpo.
-    pub fn font(
-        &mut self,
-        loader: &'a FontLoader,
-        path: impl AsRef<Path>,
-        point_size: u16,
-    ) -> Result<Rc<Font<'a, 'static>>, AssetError> {
-        let path = loader.resolve(path.as_ref());
-        let key = (path.clone(), point_size);
-        if let Some(font) = self.fonts.get(&key) {
-            self.stats.hits += 1;
-            return Ok(Rc::clone(font));
-        }
-        self.stats.misses += 1;
-        let font = Rc::new(loader.load(&path, point_size)?);
-        self.fonts.insert(key, Rc::clone(&font));
-        Ok(font)
-    }
-
     /// Quantidade de texturas em cache.
     pub fn texture_count(&self) -> usize {
         self.textures.len()
@@ -181,14 +161,9 @@ impl<'a> ResourceManager<'a> {
         self.music.len()
     }
 
-    /// Quantidade de fontes em cache.
-    pub fn font_count(&self) -> usize {
-        self.fonts.len()
-    }
-
     /// Quantidade total de recursos em cache.
     pub fn len(&self) -> usize {
-        self.textures.len() + self.sounds.len() + self.music.len() + self.fonts.len()
+        self.textures.len() + self.sounds.len() + self.music.len()
     }
 
     /// Informa se o cache não contém recursos.
@@ -206,12 +181,76 @@ impl<'a> ResourceManager<'a> {
         self.textures.clear();
         self.sounds.clear();
         self.music.clear();
-        self.fonts.clear();
         self.stats.reset();
     }
 }
 
 impl Default for ResourceManager<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Cache de fontes por `(caminho, corpo)`.
+///
+/// Separado do [`ResourceManager`] porque `Font<'t, 'static>` empresta o
+/// `Sdl2TtfContext` do `FontLoader`, que tem lifetime próprio.
+pub struct FontCache<'t> {
+    fonts: HashMap<(PathBuf, u16), Rc<Font<'t, 'static>>>,
+    stats: CacheStats,
+}
+
+impl<'t> FontCache<'t> {
+    /// Cria um cache vazio.
+    pub fn new() -> Self {
+        Self {
+            fonts: HashMap::new(),
+            stats: CacheStats::default(),
+        }
+    }
+
+    /// Carrega (ou reutiliza) uma fonte pelo par caminho/corpo.
+    pub fn font(
+        &mut self,
+        loader: &'t FontLoader,
+        path: impl AsRef<Path>,
+        point_size: u16,
+    ) -> Result<Rc<Font<'t, 'static>>, AssetError> {
+        let path = loader.resolve(path.as_ref());
+        let key = (path.clone(), point_size);
+        if let Some(font) = self.fonts.get(&key) {
+            self.stats.hits += 1;
+            return Ok(Rc::clone(font));
+        }
+        self.stats.misses += 1;
+        let font = Rc::new(loader.load(&path, point_size)?);
+        self.fonts.insert(key, Rc::clone(&font));
+        Ok(font)
+    }
+
+    /// Quantidade de fontes em cache.
+    pub fn len(&self) -> usize {
+        self.fonts.len()
+    }
+
+    /// Informa se o cache não contém fontes.
+    pub fn is_empty(&self) -> bool {
+        self.fonts.is_empty()
+    }
+
+    /// Estatísticas acumuladas de uso.
+    pub fn stats(&self) -> CacheStats {
+        self.stats
+    }
+
+    /// Esvazia o cache e zera os contadores.
+    pub fn clear(&mut self) {
+        self.fonts.clear();
+        self.stats.reset();
+    }
+}
+
+impl Default for FontCache<'_> {
     fn default() -> Self {
         Self::new()
     }

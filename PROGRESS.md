@@ -1,6 +1,6 @@
 # Progresso da implementação
 
-## Última fase concluída: Fase 4 — Assets e áudio
+## Última fase concluída: Fase 5 — Cenas e integração
 
 Data: 2026-11-06
 
@@ -13,17 +13,17 @@ Data: 2026-11-06
 | Fase 2 — Renderização 2D | Concluída | Primitivas, texturas SDL_image/RGBA, sprites, câmera e exemplos funcionais com contexto próprio de renderização. |
 | Fase 3 — Input | Concluída | Teclado, mouse e gamepad com estados por quadro, integração no loop e exemplo `input_test`. |
 | Fase 4 — Assets e áudio | Concluída | Cache de texturas/sons/músicas/fontes, `AudioSystem`, efeitos, música e exemplo `audio_test`. |
-| Fase 5 — Cenas e integração | Pendente | Implementar gerenciamento de cenas e fachada unificada da engine. |
+| Fase 5 — Cenas e integração | Concluída | `Scene`/`SceneManager`, fachada `Engine` com todos os subsistemas e `mini_game` jogável. |
 | Fase 6 — Polimento e release | Pendente | Finalizar CI, documentação de produção, validação ARM64 e release. |
 
-## Gates validados na Fase 4
+## Gates validados na Fase 5
 
 - [x] `cargo fmt --all -- --check`
 - [x] `cargo clippy --locked --all-targets -- -D warnings`
 - [x] `cargo build --locked --target x86_64-unknown-linux-gnu --all-targets`
-- [x] `cargo test --locked --target x86_64-unknown-linux-gnu` (26 testes: 16 unitários e 10 de
-  integração; cache de textura e de som com duas requisições por recurso, reprodução de tom no
-  driver `dummy`, além dos testes de entrada e renderização por pixel)
+- [x] `cargo test --locked --target x86_64-unknown-linux-gnu` (34 testes: 21 unitários e 13 de
+  integração; ciclo de vida de cena, transições push/pop/replace, consumo de eventos, ciclo da
+  `Engine` e encerramento por Escape, além dos testes anteriores)
 - [x] `cargo check --locked --target aarch64-unknown-linux-gnu --all-targets` — passou com o
   `aarch64-linux-gnu-gcc` instalado no host. A cadeia `cross` com QEMU/binfmt continua validada
   apenas pelo workflow.
@@ -31,6 +31,30 @@ Data: 2026-11-06
 - [x] Execução em hardware ARM64 real (R35S/RK3326, GIOCHI KONSOL OS, Buildroot 2024.02,
   kernel 6.12): driver `KMSDRM` ativo, `/dev/dri/card0` aberto, gamepad `r36s_Gamepad` detectado e
   os exemplos `hello_rect`, `moving_sprite` e `input_test` ativos em console sem X11/Wayland.
+
+## Entregue na Fase 5
+
+- `scene::Scene` com `on_enter(SceneContext)`, `on_exit`, `update(dt, &Input)`, `render(ctx)` e
+  `handle_event` opcional; o trait é object-safe e aceita `Box<dyn Scene + 'w>`.
+- `scene::SceneContext<'s, 'w>` entrega `&mut ResourceManager<'w>` e áudio opcional na entrada/saída
+  da cena.
+- `scene::SceneManager<'w>` com `push`, `pop`, `replace`, `current`, `current_mut`, `depth`,
+  `is_empty`, `handle_event` (do topo para a base) e aplicação de transições entre quadros, com
+  `on_exit`/`on_enter` na ordem correta.
+- `core::Engine`: reúne `Sdl`, entrada, `ResourceManager<'w>`, `RenderTarget<'w>`, `AudioSystem`
+  opcional e `SceneManager<'w>`; oferece `new`, `run` (loop fixo), `step` (quadro controlado),
+  `poll_frame`, `draw_frame`, `texture`, `texture_loader`, `resources`, `scenes` e `audio`.
+- `core::EngineConfig` (título, dimensões, áudio, mixer), `core::EngineError` (thiserror) e
+  `core::bootstrap(config, scene)` para inicializar e executar em uma chamada.
+- `platform::Window::split`/`RenderTarget` permitem alvo e cache coexistirem sem `unsafe`;
+  `RenderContext::ensure_cleared` garante fundo definido sem `clear` duplicado.
+- `Texture` passou a ter o lifetime do criador (não do loader) e as fontes migraram para
+  `assets::FontCache`, separando os dois lifetimes.
+- `game_loop::FixedStepper` foi exposto como peça reutilizável do loop de 60 Hz.
+- `src/main.rs` usa `bootstrap` + `Scene`; `examples/moving_sprite.rs` virou cena sobre `Engine`.
+- `examples/mini_game.rs`: Pong jogável com menu, partida até 5 pontos, raquete por teclado/gamepad,
+  colisão por `Rect`, `SceneManager::replace`, sons WAV gerados em runtime e carregados pelo
+  `ResourceManager`, com fallback para `Sound::tone` e para execução silenciosa.
 
 ## Entregue na Fase 4
 
@@ -118,6 +142,14 @@ Data: 2026-11-06
   sem backend ALSA, caiu para `SDL_AUDIODRIVER=dummy` mantendo-se ativo. Uma sonda dedicada
   confirmou `AudioSpec { frequency: 44100, channels: 1 }`, 4 canais alocados, `playing_channels()`
   passando a 1 após `Sound::tone(...).play()` e erro correto para arquivo de áudio ausente.
+- Fase 5 no aparelho (R35S, KMSDRM): `giochi-demo` e `mini_game` compilados com `sdl2-system`
+  abriram KMSDRM e permaneceram ativos; o log mostrou `driver de vídeo SDL2 ativo: KMSDRM`,
+  `gamepad conectado: r36s_Gamepad` e o fallback esperado de áudio
+  (`áudio indisponível, seguindo sem som`) porque a imagem não tem backend ALSA.
+- A captura via `Engine::read_pixels` (nova API de screenshot) em um quadro da `Engine` com cena
+  comprovou o desenho: fundo `(12,16,24)`, raquete esquerda `(90,220,160)` em x=32..45, raquete
+  direita `(240,160,90)` em x=594..607, bola branca `(245,245,245)` em x≈314..328, placar e rede
+  presentes.
 - Após os testes, `/etc/inittab` foi restaurado e o aparelho reiniciado; o launcher voltou a rodar.
 
 ## Bloqueios / pendências
@@ -129,8 +161,7 @@ Data: 2026-11-06
 - O floating point de gamepad/sticks usa os eixos crus do SDL2; mapeamentos específicos de
   hardware (ex.: inversão de eixo) ainda podem ser adicionados em uma fase de polimento.
 
-## Próxima fase: Fase 5 — Cenas e integração
+## Próxima fase: Fase 6 — Polimento e release
 
-Implementar `Scene`/`SceneManager` com pilha e transições, uma fachada `Engine` que possua `Sdl`,
-`Window`, `Input`, `ResourceManager` e `AudioSystem`, e um `examples/mini_game.rs` jogável usando
-todos os módulos.
+Publicar `docs/API_GUIDE.md`, fechar o release automatizado para tags `v*`, validar a cadeia `cross`
+com QEMU no CI e revisar a documentação de produção.

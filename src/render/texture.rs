@@ -35,12 +35,12 @@ impl<'a> TextureLoader<'a> {
     }
 
     /// Carrega uma textura PNG a partir de um caminho.
-    pub fn load(&self, path: impl AsRef<Path>) -> Result<Texture<'_>, RenderError> {
+    pub fn load(&self, path: impl AsRef<Path>) -> Result<Texture<'a>, RenderError> {
         Texture::from_file(self, path)
     }
 
     /// Carrega uma textura PNG a partir de bytes codificados.
-    pub fn load_bytes(&self, bytes: &[u8]) -> Result<Texture<'_>, RenderError> {
+    pub fn load_bytes(&self, bytes: &[u8]) -> Result<Texture<'a>, RenderError> {
         Texture::from_bytes(self, bytes)
     }
 
@@ -50,7 +50,7 @@ impl<'a> TextureLoader<'a> {
         width: u32,
         height: u32,
         pixels: &[u8],
-    ) -> Result<Texture<'_>, RenderError> {
+    ) -> Result<Texture<'a>, RenderError> {
         if width == 0 || height == 0 {
             return Err(RenderError::InvalidImageDimensions);
         }
@@ -90,7 +90,12 @@ impl<'a> TextureLoader<'a> {
     }
 }
 
-/// Textura carregada, emprestada da fábrica que a criou.
+/// Textura carregada, vinculada ao criador que a originou.
+///
+/// O lifetime é o do `TextureCreator` (e portanto o da janela), não o do
+/// `TextureLoader` temporário: texturas pertencem ao renderer e continuam
+/// válidas depois que o SDL_image deixa de ser usado, o que permite guardá-las
+/// em caches sem manter o loader vivo.
 pub struct Texture<'a> {
     pub(crate) inner: SdlTexture<'a>,
     /// Largura da imagem em pixels.
@@ -99,10 +104,10 @@ pub struct Texture<'a> {
     pub height: u32,
 }
 
-impl<'a> Texture<'a> {
+impl<'w> Texture<'w> {
     /// Carrega um recurso de imagem usando a fábrica SDL_image.
     pub fn from_file(
-        loader: &'a TextureLoader,
+        loader: &TextureLoader<'w>,
         path: impl AsRef<Path>,
     ) -> Result<Self, RenderError> {
         let inner = loader
@@ -118,7 +123,7 @@ impl<'a> Texture<'a> {
     }
 
     /// Decodifica bytes de imagem com SDL_image.
-    pub fn from_bytes(loader: &'a TextureLoader, bytes: &[u8]) -> Result<Self, RenderError> {
+    pub fn from_bytes(loader: &TextureLoader<'w>, bytes: &[u8]) -> Result<Self, RenderError> {
         let inner = loader
             .creator
             .load_texture_bytes(bytes)
@@ -133,7 +138,7 @@ impl<'a> Texture<'a> {
 
     /// Cria uma textura RGBA procedural, útil para recursos gerados em memória.
     pub fn from_rgba(
-        loader: &'a TextureLoader,
+        loader: &TextureLoader<'w>,
         width: u32,
         height: u32,
         pixels: &[u8],

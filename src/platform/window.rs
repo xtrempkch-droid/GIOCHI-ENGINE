@@ -1,5 +1,5 @@
 //! Janela SDL2 e adaptação ao contexto de renderização da engine.
-//! Status: criação de janela, contexto e fábrica de texturas implementados.
+//! Status: criação de janela, contexto, fábrica de texturas e desmembramento implementados.
 
 use sdl2::{
     rect::Rect as SdlRect,
@@ -15,6 +15,23 @@ use crate::{
 use super::{sdl::Sdl, PlatformError};
 
 pub use crate::render::renderer::RenderContext;
+
+/// Alvo de desenho que empresta apenas o canvas, sem o criador de texturas.
+///
+/// Existe para permitir que `core::Engine` guarde simultaneamente o alvo mutável e
+/// o cache de texturas (que empresta o criador imutavelmente): os dois vêm de
+/// campos distintos de [`Window`], então o verificador de empréstimos aceita a
+/// divisão sem `unsafe` nem auto-referência.
+pub struct RenderTarget<'w> {
+    canvas: &'w mut Canvas<SdlWindow>,
+}
+
+impl RenderTarget<'_> {
+    /// Cria um contexto de desenho emprestando o canvas por um quadro.
+    pub fn context(&mut self) -> RenderContext<'_> {
+        RenderContext::new(self.canvas)
+    }
+}
 
 /// Janela SDL2 e canvas associado, com as dimensões solicitadas.
 pub struct Window {
@@ -67,6 +84,19 @@ impl Window {
     /// Apresenta o conteúdo desenhado no canvas.
     pub fn present(&mut self) {
         self.canvas.present();
+    }
+
+    /// Divide a janela em alvo de desenho e criador de texturas independentes.
+    ///
+    /// Os dois empréstimos apontam para campos distintos e podem coexistir pelo
+    /// tempo de vida `'w`, o que sustenta a fachada [`crate::core::Engine`].
+    pub fn split<'w>(&'w mut self) -> (RenderTarget<'w>, &'w TextureCreator<WindowContext>) {
+        let Self {
+            canvas,
+            texture_creator,
+            ..
+        } = self;
+        (RenderTarget { canvas }, texture_creator)
     }
 
     /// Cria um contexto de desenho emprestando temporariamente o canvas.

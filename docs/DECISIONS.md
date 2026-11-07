@@ -58,6 +58,39 @@
 - A zona morta padrão dos analógicos é 0.2, configurável com `GamepadState::set_deadzone`. O
   controle é declarado antes do subsistema no struct para ser liberado primeiro.
 
+## Fachada, cenas e lifetimes
+
+- `Engine::new(sdl, &mut window, config)` recebe a janela emprestada em vez de criá-la. A
+  alternativa (`new(config)`) exigiria guardar a janela e o cache de texturas na mesma struct, o
+  que é auto-referência: as texturas emprestam o `TextureCreator` da janela. Resolver isso exigiria
+  `unsafe`, `Box::leak` ou a feature `unsafe_textures` (que torna a destruição de texturas depois
+  do renderer um risco em tempo de execução). O empréstimo mantém a garantia verificada pelo
+  compilador e foi validado em hardware; `Engine::bootstrap(config, scene)` cobre o fluxo
+  "inicializa tudo e roda" sem expor lifetimes ao chamador.
+- `Window::split` devolve `RenderTarget` (canvas mutável) e `&TextureCreator` (imutável) a partir de
+  campos distintos. É isso que permite `Engine` guardar alvo e cache simultaneamente.
+- O lifetime de `Texture` é o do `TextureCreator`, não o do `TextureLoader`. A textura pertence ao
+  renderer; o SDL_image só decodifica superfícies. Antes, guardar uma textura exigia manter o
+  loader vivo por todo o programa; agora basta a janela.
+- `ResourceManager<'w>` cobre texturas, sons e músicas. Fontes ficam em `FontCache<'t>` porque
+  `Font<'t, 'static>` empresta o `Sdl2TtfContext` de um `FontLoader` concreto — misturar os dois
+  lifetimes obrigaria a `Engine` a guardar o `FontLoader`, recriando o problema de auto-referência.
+- `Scene` mantém métodos sem parâmetros genéricos, então `Box<dyn Scene + 'w>` aceita cenas
+  heterogêneas. `on_enter` recebe `SceneContext<'_, 'w>` com `&mut ResourceManager<'w>` e áudio
+  opcional; `update`/`render` recebem apenas o que precisam, e a cena guarda `Rc<Texture<'w>>`
+  obtido na entrada.
+- Transições de cena são aplicadas entre quadros. Uma troca imediata durante `update` exigiria
+  `&mut SceneManager` com a cena já emprestada pela pilha (inviável sem `Rc<RefCell<...>>` ou
+  comandos). Adiar a transição também evita trocar a cena no meio da atualização. O efeito — a cena
+  nova desenha no quadro seguinte — está documentado e coberto por teste.
+- `Engine::step(dt)` existe para testes headless e para jogos que querem controlar o ritmo
+  (o `mini_game` troca cenas pelo `scenes_mut()` entre passos). `Engine::run` usa
+  `game_loop::FixedStepper`, exportado como peça reutilizável do loop.
+- `RenderContext::ensure_cleared` limpa o quadro apenas se a cena não limpou, garantindo fundo
+  definido sem duplo `clear` em todo quadro.
+- O áudio é opcional na `Engine`: falha ao abrir o dispositivo vira log e `audio() == None`, para
+  que jogos funcionem em imagens sem backend de som (caso real do GIOCHI KONSOL OS).
+
 ## Assets e áudio
 
 - `ResourceManager` guarda recursos em `Rc` para permitir que sprite, cena e cache compartilhem a
@@ -86,8 +119,9 @@
 - Implementados: inicialização SDL2, janela/canvas, loop fixo, renderização de primitivas e
   texturas, sprites, câmera mundo/tela, entrada de teclado/mouse/gamepad e estruturas básicas de
   matemática/cache/estado.
-- Base parcial: cenas e integração final (`Engine` com `SceneManager`). Assets, áudio, entrada,
-  renderização e plataforma estão implementados e cobertos por testes.
+- Implementados: plataforma, entrada, renderização, assets, áudio, cenas (`Scene`,
+  `SceneContext`, `SceneManager`) e a fachada `Engine`/`EngineError`. Restam polimento, release e
+  documentação de API (Fase 6).
 - Erros de biblioteca usam `thiserror`; aplicações podem agregar contexto com `anyhow`.
 - `thiserror` fornece erros tipados e sem dependência de contexto de aplicação na biblioteca;
   `anyhow` facilita a composição e apresentação de erros no binário e nos exemplos.

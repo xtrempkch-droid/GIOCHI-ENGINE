@@ -13,7 +13,7 @@ pub use loader::{
     load_music, load_sound, load_texture, load_texture_bytes, read_bytes, validate_asset_path,
     FontLoader,
 };
-pub use manager::{AssetManager, CacheStats, ResourceManager};
+pub use manager::{AssetManager, CacheStats, FontCache, ResourceManager};
 
 /// Falhas ao localizar, ler ou decodificar um recurso.
 #[derive(Debug, Error)]

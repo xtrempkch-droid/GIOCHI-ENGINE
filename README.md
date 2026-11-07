@@ -55,6 +55,8 @@ demonstrações de desenho e movimento, use `cargo run --example hello_rect` e
 `cargo run --example input_test` exercita teclado, mouse e gamepad: setas/WASD movem, Espaço troca
 a cor e o botão direito reposiciona o quadrado sob o ponteiro. `cargo run --example audio_test`
 sintetiza dois tons (Espaço e Enter) usando `AudioSystem` e `Sound`, sem arquivos de áudio.
+`cargo run --example mini_game` abre um Pong jogável (W/S ou setas movem, Espaço inicia) que usa
+todos os módulos — entrada, renderização, assets, áudio, cenas e matemática.
 
 Para validar a qualidade:
 
@@ -105,6 +107,47 @@ sudo usermod -aG input,video "$USER"
 ```
 
 Confira [docs/KMSDRM.md](docs/KMSDRM.md) antes de executar em uma tela embarcada.
+
+## Uso da engine
+
+O caminho completo usa a fachada `Engine` com cenas:
+
+```rust
+use giochi_engine::{
+    core::engine::{Engine, EngineConfig},
+    input::Input,
+    math::color::Color,
+    platform::{init_sdl, Window},
+    render::{renderer::RenderContext, RenderError},
+    scene::Scene,
+};
+
+struct Pong;
+
+impl Scene for Pong {
+    fn update(&mut self, dt: f32, input: &Input) {
+        let _ = (dt, input.keyboard.movement());
+    }
+
+    fn render(&mut self, ctx: &mut RenderContext<'_>) -> Result<(), RenderError> {
+        ctx.clear(Color::rgb(12, 16, 24));
+        Ok(())
+    }
+}
+
+fn main() -> anyhow::Result<()> {
+    let sdl = init_sdl()?;
+    let config = EngineConfig::new("Meu jogo", 640, 480);
+    let mut window = Window::new(&sdl, &config.title, config.width, config.height)?;
+    let engine = Engine::new(sdl, &mut window, config)?;
+    engine.run(Box::new(Pong))?;
+    Ok(())
+}
+```
+
+`Engine` reúne SDL2, janela, entrada, cache de recursos (`Engine::texture`), áudio opcional e a
+pilha de cenas. Para jogos que não precisam de cenas, `core::game_loop::run` executa diretamente uma
+implementação de `core::game_loop::Game`.
 
 ## Uso como biblioteca
 
