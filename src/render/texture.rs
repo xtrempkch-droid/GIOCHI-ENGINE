@@ -1,5 +1,10 @@
 //! Carrega e mantém recursos de imagem SDL2 para desenho 2D.
-//! Status: carregamento PNG por arquivo/bytes e criação RGBA procedural implementados.
+//! Status: carregamento por arquivo/bytes e criação RGBA procedural implementados.
+//!
+//! O SDL_image é inicializado sem exigir formatos específicos: a biblioteca carrega
+//! cada decodificador sob demanda. Isso mantém a engine funcional em imagens
+//! embarcadas cujo SDL_image foi compilado sem PNG/JPEG e transforma a ausência de
+//! um formato em erro de carregamento daquele recurso, não em falha da engine.
 
 use std::path::Path;
 
@@ -20,7 +25,9 @@ pub struct TextureLoader<'a> {
 
 impl<'a> TextureLoader<'a> {
     pub(crate) fn new(creator: &'a TextureCreator<WindowContext>) -> Result<Self, RenderError> {
-        let image_context = sdl2::image::init(InitFlag::PNG).map_err(RenderError::Image)?;
+        // `InitFlag::empty()` não pré-carrega decodificadores: o SDL_image 2.x os
+        // resolve no primeiro `IMG_Load`, permitindo builds com subconjunto de formatos.
+        let image_context = sdl2::image::init(InitFlag::empty()).map_err(RenderError::Image)?;
         Ok(Self {
             creator,
             _image_context: image_context,

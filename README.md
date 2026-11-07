@@ -73,8 +73,18 @@ cargo install cross --locked
 cross build --target aarch64-unknown-linux-gnu --release
 ```
 
-O arquivo [docs/CROSS_COMPILE.md](docs/CROSS_COMPILE.md) detalha a cadeia de compilação,
-transferência e dependências de runtime.
+Para imagens embarcadas que já entregam SDL2 com KMSDRM, compile contra o SDL2 do próprio
+aparelho em vez de recompilá-lo:
+
+```sh
+PKG_CONFIG_ALLOW_CROSS=1 PKG_CONFIG_PATH=/tmp/r35s-sysroot/usr/lib/pkgconfig \
+cargo build --release --target aarch64-unknown-linux-gnu \
+      --no-default-features --features sdl2-system
+```
+
+A feature `sdl2-bundled` (padrão) compila o SDL2 do código-fonte; `sdl2-system` usa o SDL2 do
+sistema via `pkg-config`. O arquivo [docs/CROSS_COMPILE.md](docs/CROSS_COMPILE.md) detalha o
+sysroot do dispositivo, a transferência e as dependências de runtime.
 
 ## Execução em KMSDRM
 
@@ -120,6 +130,14 @@ fn main() {
     }));
 }
 ```
+
+## Validação em hardware
+
+A engine foi executada em um GIOCHI KONSOL OS (RK3326, Buildroot, kernel 6.12) a partir de um
+console sem X11/Wayland, com o driver `KMSDRM` ativo e o gamepad `r36s_Gamepad` detectado. A
+captura de pixels confirmou cor e geometria do quadro renderizado nos exemplos `hello_rect`,
+`moving_sprite` e `input_test`. Detalhes e particularidades da imagem estão em
+[docs/KMSDRM.md](docs/KMSDRM.md).
 
 ## Documentação e contribuição
 

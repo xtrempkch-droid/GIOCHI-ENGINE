@@ -16,12 +16,20 @@ path = "src/lib.rs"
 name = "giochi-demo"
 path = "src/main.rs"
 
+[features]
+default = ["sdl2-bundled"]
+# Compila o SDL2 a partir do código-fonte (desenvolvimento e CI em x86_64).
+sdl2-bundled = ["sdl2/bundled"]
+# Usa o SDL2 do sistema (pkg-config), necessário para embarcados cuja imagem
+# Buildroot já entrega o SDL2 com backend KMSDRM habilitado.
+sdl2-system = ["sdl2/use-pkgconfig"]
+
 [dependencies]
 anyhow = "1.0"
 env_logger = "0.11"
 glam = "0.29"
 log = "0.4"
-sdl2 = { version = "0.38", features = ["bundled", "image", "mixer", "ttf"] }
+sdl2 = { version = "0.38", default-features = false, features = ["image", "mixer", "ttf"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = "2.0"

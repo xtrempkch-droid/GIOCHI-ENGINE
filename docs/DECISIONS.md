@@ -9,6 +9,11 @@
 - `bundled` reduz a dependência de uma instalação prévia do SDL2 principal e mantém uma versão
   previsível entre desenvolvimento e compilação cruzada; as extensões continuam usando pacotes
   nativos da plataforma.
+- O SDL2 é uma dependência opcional por feature: `sdl2-bundled` (padrão) compila o SDL2 e
+  `sdl2-system` usa `use-pkgconfig`. A separação existe porque imagens Buildroot embarcadas já
+  trazem SDL2 compilado com KMSDRM, e o SDL2 `bundled` cruzado tende a desabilitar KMSDRM quando
+  faltam headers de `libdrm`/`libgbm` no sysroot. Validado no R35S: o build `sdl2-system` gerou um
+  binário que exigiu apenas `GLIBC_2.34` (aparelho tem 2.38).
 - `glam` foi escolhido para vetores e transformações 2D por ser leve, orientado a jogos e oferecer
   tipos vetorizados compatíveis com os casos de uso da engine; `nalgebra` seria mais amplo que o
   necessário para a matemática 2D prevista.
@@ -31,11 +36,16 @@
   explícita de drivers desktop ou de configuração do usuário.
 - `RenderContext` é implementado sobre SDL2 em `render`, enquanto `Window` permanece na camada
   `platform`; jogos usam apenas tipos de cor/retângulo próprios e erros tipados.
+- O SDL_image é inicializado com `InitFlag::empty()`: a versão 2.x carrega decodificadores sob
+  demanda. Exigir PNG no `init` quebrava em imagens Buildroot compiladas sem libpng, mesmo quando
+  os assets eram procedurais; a ausência de um formato agora vira erro de carregamento do recurso.
 - `Window` possui o `TextureCreator` SDL2; `render_context_with_loader` empresta o canvas e a
   fábrica ao mesmo tempo, e o loader mantém SDL_image ativo. Texturas têm lifetime vinculado ao
   loader, impedindo que sobrevivam ao canvas que as criou.
 - `Game::render` retorna `RenderError`, propagado pelo loop ao chamador, para não ocultar falhas de
   desenho.
+- `RenderContext::read_pixels` expõe RGBA8888 do quadro atual para capturas e para testes de pixel
+  headless, permitindo validar renderização no CI e em hardware sem framebuffer legado.
 - A entrada é orientada a eventos e consolidada por quadro: `begin_frame` limpa as transições e
   `update(&[Event])` aplica os eventos pendentes. `is_down` representa o estado mantido,
   `is_pressed_this_frame` e `is_released_this_frame` representam as transições do quadro.

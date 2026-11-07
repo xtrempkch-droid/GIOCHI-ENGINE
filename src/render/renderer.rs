@@ -1,7 +1,9 @@
 //! Contexto de desenho 2D independente das APIs de SDL2 expostas aos jogos.
 //! Status: limpeza, primitivas, texturas e apresentação implementadas.
 
-use sdl2::{rect::Rect as SdlRect, render::Canvas, video::Window as SdlWindow};
+use sdl2::{
+    pixels::PixelFormatEnum, rect::Rect as SdlRect, render::Canvas, video::Window as SdlWindow,
+};
 
 use crate::math::{color::Color, rect::Rect};
 
@@ -62,6 +64,16 @@ impl<'a> RenderContext<'a> {
                 flip_horizontal,
                 flip_vertical,
             )
+            .map_err(RenderError::Draw)
+    }
+
+    /// Lê os pixels da área indicada no formato RGBA8888.
+    ///
+    /// Útil para capturas de tela e para testes de renderização headless que
+    /// verificam a cor efetivamente produzida pelo backend.
+    pub fn read_pixels(&self, rect: Rect) -> Result<Vec<u8>, RenderError> {
+        self.canvas
+            .read_pixels(to_sdl_rect(rect), PixelFormatEnum::RGBA32)
             .map_err(RenderError::Draw)
     }
 

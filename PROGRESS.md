@@ -21,14 +21,15 @@ Data: 2026-11-06
 - [x] `cargo fmt --all -- --check`
 - [x] `cargo clippy --locked --all-targets -- -D warnings`
 - [x] `cargo build --locked --target x86_64-unknown-linux-gnu --all-targets`
-- [x] `cargo test --locked --target x86_64-unknown-linux-gnu` (17 testes: 14 unitários e 3 integração;
-  entrada coberta com eventos SDL2 sintéticos para teclado, mouse e gamepad)
+- [x] `cargo test --locked --target x86_64-unknown-linux-gnu` (19 testes: 14 unitários e 5 integração;
+  entrada coberta com eventos SDL2 sintéticos e renderização validada por pixel em modo headless)
 - [x] `cargo check --locked --target aarch64-unknown-linux-gnu --all-targets` — passou com o
   `aarch64-linux-gnu-gcc` instalado no host. A cadeia `cross` com QEMU/binfmt continua validada
   apenas pelo workflow.
 - [x] `cargo doc --locked --no-deps --document-private-items`
-- [ ] Executar `input_test` em desktop ou hardware KMSDRM — ambiente sem display; a lógica de
-  entrada é coberta por testes unitários com eventos SDL2 sintéticos.
+- [x] Execução em hardware ARM64 real (R35S/RK3326, GIOCHI KONSOL OS, Buildroot 2024.02,
+  kernel 6.12): driver `KMSDRM` ativo, `/dev/dri/card0` aberto, gamepad `r36s_Gamepad` detectado e
+  os exemplos `hello_rect`, `moving_sprite` e `input_test` ativos em console sem X11/Wayland.
 
 ## Entregue na Fase 3
 
@@ -77,10 +78,30 @@ Data: 2026-11-06
 - `actionlint` não estava instalado no ambiente; os workflows foram revisados manualmente e o CI
   valida compilação e testes.
 
+## Validação em hardware (R35S / RK3326)
+
+- Build cruzado contra o SDL2 do próprio aparelho: `--no-default-features --features sdl2-system`,
+  com `PKG_CONFIG_PATH` apontando para um sysroot montado a partir do rootfs. O binário resultante
+  exige no máximo `GLIBC_2.34` (aparelho tem 2.38) e apenas `libSDL2`/`libc`/`libgcc_s`.
+- `SDL_VIDEODRIVER=kmsdrm` inicializou no console; o log confirmou `driver de vídeo SDL2 ativo:
+  KMSDRM` e `gamepad conectado: r36s_Gamepad`.
+- A sonda com `RenderContext::read_pixels` leu o quadro real: fundo `(20,60,140)` e retângulo
+  `(240,90,40)` ocupando exatamente `x=300..419`, `y=180..299` (120x120 = 14.400 px).
+- `SDL2_image` da imagem foi compilado **sem PNG**; a inicialização passou a ser sob demanda
+  (`InitFlag::empty()`), o que manteve a engine funcional e transformou a limitação em erro do
+  recurso específico.
+- `SDL2_mixer` não existe no rootfs. Foi compilado do código-fonte (2.8.0, apenas WAV) e instalado
+  em `/usr/lib` do aparelho; `audio_test` passou com `SDL_AUDIODRIVER=dummy`. **O SDL2 da imagem não
+  tem backend ALSA** (somente `dsp`/`dummy`/`disk`), então áudio real exige ajuste no Buildroot.
+- `/dev/fb0` (`rockchipdrmfb`) não espelha o scanout do KMSDRM; a captura deve usar `read_pixels`.
+- Após os testes, `/etc/inittab` foi restaurado e o aparelho reiniciado; o launcher voltou a rodar.
+
 ## Bloqueios / pendências
 
-- Validar a cadeia `cross` com QEMU/binfmt no workflow e executar os exemplos em um ambiente com
-  display ou hardware KMSDRM.
+- Validar a cadeia `cross` com QEMU/binfmt no workflow (a validação local usou o sysroot do
+  aparelho, que não depende de emulação).
+- Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem
+  sem bibliotecas extras.
 - `actionlint` não está instalado neste ambiente.
 - O floating point de gamepad/sticks usa os eixos crus do SDL2; mapeamentos específicos de
   hardware (ex.: inversão de eixo) ainda podem ser adicionados em uma fase de polimento.

@@ -11,8 +11,10 @@ sudo apt-get install build-essential pkg-config cmake \
   libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev libudev-dev libasound2-dev
 ```
 
-O crate ativa `bundled` para SDL2 principal; imagem, mixer e TTF precisam das bibliotecas de
-desenvolvimento disponíveis no sistema.
+O crate ativa `sdl2-bundled` (SDL2 compilado do código-fonte) por padrão; imagem, mixer e TTF
+precisam das bibliotecas de desenvolvimento disponíveis no sistema. Para linkar com o SDL2 da
+própria distribuição, use `--no-default-features --features sdl2-system`, que descobre as
+bibliotecas via `pkg-config` (detalhes em [CROSS_COMPILE.md](CROSS_COMPILE.md)).
 
 ```sh
 cargo build

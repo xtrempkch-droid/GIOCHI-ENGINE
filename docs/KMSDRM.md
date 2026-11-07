@@ -50,3 +50,23 @@ Faça logout/login após alterar grupos. Não execute como root como solução p
 
 As distribuições e firmwares embarcados têm versões e configurações diferentes; valide cada
 combinação de placa, kernel e driver em hardware real.
+
+## Resultado validado em hardware (R35S / RK3326)
+
+Teste executado em um GIOCHI KONSOL OS (Buildroot 2024.02, kernel 6.12, glibc 2.38) com
+`SDL_VIDEODRIVER=kmsdrm`:
+
+- O driver relatado pelo SDL2 foi `KMSDRM` e o dispositivo abriu `/dev/dri/card0` sem X11/Wayland.
+- O gamepad embutido foi detectado como `r36s_Gamepad` pelo subsistema de controle do SDL2.
+- A captura via `RenderContext::read_pixels` confirmou o quadro: fundo `(20,60,140)` e retângulo
+  `(240,90,40)` de 120x120 px na posição esperada, sem deslocamento de cor ou escala.
+- `hello_rect`, `moving_sprite` e `input_test` permaneceram ativos durante a execução em KMSDRM.
+
+Observações específicas dessa imagem:
+
+- `/dev/fb0` (`rockchipdrmfb`) **não** espelha o scanout do KMSDRM; usar `read_pixels` para
+  evidência visual em vez de ler o framebuffer legado.
+- O SDL2 dessa imagem foi compilado sem backend ALSA (apenas `dsp`, `dummy` e `disk`). Para testar
+  áudio sem hardware use `SDL_AUDIODRIVER=dummy`; para áudio real, habilite ALSA no Buildroot.
+- O SDL2_image foi compilado sem PNG. A engine inicializa o SDL_image sob demanda, então builds
+  parciais não impedem a inicialização; o erro aparece apenas ao carregar um PNG.
