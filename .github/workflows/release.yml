@@ -23,7 +23,7 @@ jobs:
     name: ARM64 release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -34,7 +34,7 @@ jobs:
           key: release-${{ env.TARGET }}
 
       - name: Enable ARM64 emulation
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
@@ -124,7 +124,7 @@ jobs:
 
       - name: Upload build preview
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: giochi-engine-${{ env.TARGET }}-preview
           path: dist/
