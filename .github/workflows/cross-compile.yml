@@ -1,0 +1,23 @@
+name: Cross Compile
+
+on:
+  workflow_dispatch:
+
+jobs:
+  arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Install cross
+        run: cargo install cross --locked
+      - name: Check ARM64 target
+        run: cross check --target aarch64-unknown-linux-gnu
+      - name: Build ARM64 release
+        run: cross build --release --target aarch64-unknown-linux-gnu

@@ -1,0 +1,6 @@
+[build]
+target = "x86_64-unknown-linux-gnu"
+
+[env]
+# O CMake 4 exige esse override ao configurar fontes SDL com políticas antigas.
+CMAKE_POLICY_VERSION_MINIMUM = "3.5"

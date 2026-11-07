@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Enable ARM64 emulation
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Install native SDL2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config cmake \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev libudev-dev libasound2-dev
+      - name: Install cross
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross --locked
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross clippy --target "${{ matrix.target }}" --all-targets -- -D warnings
+          else
+            cargo clippy --target "${{ matrix.target }}" --all-targets -- -D warnings
+          fi
+      - name: Test
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross test --target "${{ matrix.target }}"
+          else
+            cargo test --target "${{ matrix.target }}"
+          fi
+      - name: Build release
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross build --release --target "${{ matrix.target }}"
+          else
+            cargo build --release --target "${{ matrix.target }}"
+          fi
+
+  msrv:
+    name: Rust 1.80 MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.80.0
+        with:
+          targets: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: rust-1.80
+      - name: Install native SDL2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config cmake \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev libudev-dev libasound2-dev
+      - name: Check minimum supported Rust version
+        run: cargo +1.80.0 check --target x86_64-unknown-linux-gnu --all-targets --locked

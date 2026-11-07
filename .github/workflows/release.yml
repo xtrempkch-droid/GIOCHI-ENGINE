@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Install cross and create ARM64 release
+        run: |
+          cargo install cross --locked
+          cross build --release --target aarch64-unknown-linux-gnu
+          cp target/aarch64-unknown-linux-gnu/release/giochi-demo giochi-demo-aarch64-unknown-linux-gnu
+          library_path="$(find target/aarch64-unknown-linux-gnu/release -maxdepth 1 -type f -name 'libgiochi_engine-*.rlib' -print -quit)"
+          test -n "$library_path"
+          tar -czf libgiochi_engine-aarch64-unknown-linux-gnu.tar.gz \
+            -C "$(dirname "$library_path")" "$(basename "$library_path")"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            giochi-demo-aarch64-unknown-linux-gnu
+            libgiochi_engine-aarch64-unknown-linux-gnu.tar.gz
