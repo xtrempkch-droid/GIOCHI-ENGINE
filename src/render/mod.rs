@@ -23,5 +23,10 @@ pub enum RenderError {
     InvalidImageDimensions,
     /// O número de bytes não corresponde às dimensões RGBA solicitadas.
     #[error("dados RGBA inválidos: esperado {expected} bytes, recebido {actual}")]
-    InvalidImageData { expected: usize, actual: usize },
+    InvalidImageData {
+        /// Quantidade de bytes necessária para `largura * altura * 4`.
+        expected: usize,
+        /// Quantidade de bytes efetivamente fornecida.
+        actual: usize,
+    },
 }
