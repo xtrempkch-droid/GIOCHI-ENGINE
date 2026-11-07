@@ -107,6 +107,47 @@ jobs:
           done
           exit "$issues"
 
+  coverage:
+    name: Cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: coverage
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install native SDL2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config cmake \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+      - name: Run tests with coverage
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: |
+          cargo llvm-cov --locked --all-targets --lcov --output-path lcov.info
+      - name: Report coverage summary
+        run: |
+          cargo llvm-cov report --summary-only | tee coverage-summary.txt
+          {
+            echo '### Cobertura de testes'
+            echo '```'
+            cat coverage-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: |
+            lcov.info
+            coverage-summary.txt
+          retention-days: 14
+
   workflows:
     name: Workflows (actionlint)
     runs-on: ubuntu-latest
