@@ -8,18 +8,17 @@ use giochi_engine::platform::sdl::init_sdl;
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color};
 
 fn main() -> Result<()> {
-    let sdl = init_sdl()?;
-    let video = sdl.video().map_err(anyhow::Error::msg)?;
+    let mut sdl = init_sdl()?;
+    let video = sdl.video();
     let window = video
         .window("GIOCHI-ENGINE — Retângulo", 640, 480)
         .position_centered()
         .build()?;
     let mut canvas = window.into_canvas().accelerated().build()?;
-    let mut events = sdl.event_pump().map_err(anyhow::Error::msg)?;
     let mut running = true;
 
     while running {
-        for event in events.poll_iter() {
+        for event in sdl.poll_raw_events() {
             if matches!(
                 event,
                 Event::Quit { .. }

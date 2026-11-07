@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TD
     Demo[exemplo SDL2 / consumidor] --> Core[core: loop, tempo e configuração]
-    Bootstrap[giochi-demo] --> BootstrapMessage[confirmação do bootstrap]
+    Demo[giochi-demo] --> Core
     Core --> Platform[platform: SDL2, janela e KMSDRM]
     Platform --> SDL[SDL2]
     Core --> Scene[scene: contrato e estados]
@@ -23,16 +23,16 @@ carregamento de imagens e renderização de sprites ainda oferecem tipos-base, n
 ## Fluxo de inicialização
 
 ```text
-examples/moving_sprite → init_sdl → janela/canvas → GameEngine::new
-                                                    → Game::update (passo fixo)
-                                                    → Game::render → apresentação do quadro
+main → init_sdl → Window::new → game_loop::run
+                                 → coleta Quit/Escape
+                                 → Game::update (passo fixo)
+                                 → Game::render → apresentação do quadro
 ```
 
-`core::game_loop` usa um timestep de 1/60 s, acumulador e limite de 250 ms para descartar
-atrasos excessivos. O demo trata eventos SDL2 e encaminha o estado das setas ao jogo.
-`core::engine::GameEngine` conduz o loop usando a configuração `EngineConfig`; a aplicação
-inicializa SDL2 e entrega o contexto de desenho, sem expor o SDL2 diretamente ao núcleo.
-O binário `giochi-demo` permanece um smoke test de bootstrap, sem inicialização de SDL2.
+`core::game_loop` usa um timestep de 1/60 s, acumulador e limite de 250 ms para descartar atrasos
+excessivos. `core::time::Time` mede delta, tempo decorrido e quadros. O loop consome eventos
+traduzidos pela plataforma e encerra com Quit ou Escape, sem importar SDL2 diretamente.
+O binário `giochi-demo` cria a janela e roda um jogo mínimo que limpa a tela.
 
 ## Regras de dependência
 

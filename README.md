@@ -49,8 +49,8 @@ cargo test
 cargo run --bin giochi-demo
 ```
 
-O binário de bootstrap imprime `giochi-engine bootstrap OK`. Para abrir a demonstração gráfica
-interativa no desktop, use `cargo run --example moving_sprite`.
+O binário `giochi-demo` abre uma janela preta que pode ser encerrada com Escape. Para a
+demonstração de movimento, use `cargo run --example moving_sprite`.
 
 Para validar a qualidade:
 
@@ -81,7 +81,7 @@ configure explicitamente quando necessário:
 
 ```sh
 export SDL_VIDEODRIVER=KMSDRM
-cargo run --release --example moving_sprite
+cargo run --release --bin giochi-demo
 ```
 
 Adicione o usuário aos grupos `input` e `video` e faça novo login:

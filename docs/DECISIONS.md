@@ -24,6 +24,8 @@
   e matemática não dependem diretamente do SDL2.
 - O loop usa timestep fixo de 1/60 s, acumulador e limite de 250 ms de tempo por quadro. A limitação
   evita que uma pausa longa provoque uma quantidade ilimitada de atualizações.
+- A camada `platform` encapsula `EventPump` e traduz eventos de encerramento para `SdlEvent`;
+  `core::game_loop` trata somente a API da plataforma e o contexto de renderização.
 - KMSDRM é selecionado somente quando `SDL_VIDEODRIVER` não foi definido, preservando a escolha
   explícita de drivers desktop ou de configuração do usuário.
 
@@ -36,5 +38,5 @@
 - Erros de biblioteca usam `thiserror`; aplicações podem agregar contexto com `anyhow`.
 - `thiserror` fornece erros tipados e sem dependência de contexto de aplicação na biblioteca;
   `anyhow` facilita a composição e apresentação de erros no binário e nos exemplos.
-- O binário principal fica como smoke test de bootstrap; exemplos independentes demonstram SDL2,
-  movimento e áudio sem confundir a inicialização do pacote com demos que exigem dispositivos.
+- O binário principal é a demonstração SDL2 mínima de janela preta e saída por Escape; exemplos
+  independentes demonstram movimento e áudio sem ampliar o escopo do demo básico.

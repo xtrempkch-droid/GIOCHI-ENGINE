@@ -1,20 +1,58 @@
 //! Inicialização SDL2 com seleção condicional do driver de vídeo KMSDRM.
-//! Status: inicialização e diagnóstico tipado implementados.
+//! Status: inicialização, seleção de driver, eventos de saída e diagnóstico tipado implementados.
 
-use sdl2::{hint, Sdl};
-use thiserror::Error;
+use sdl2::{event::Event, hint, keyboard::Keycode, EventPump, VideoSubsystem};
 
-/// Falha ao inicializar o SDL2.
-#[derive(Debug, Error)]
-pub enum PlatformError {
-    /// O SDL2 recusou a inicialização.
-    #[error(
-        "não foi possível inicializar o SDL2: {0}. Verifique as permissões de /dev/dri e os grupos input e video"
-    )]
-    Initialization(String),
+use super::PlatformError;
+
+/// Estado SDL2 mantido durante a vida da aplicação.
+pub struct Sdl {
+    event_pump: EventPump,
+    /// Subsistema de vídeo inicializado.
+    pub video: VideoSubsystem,
+    /// Contexto raiz SDL2.
+    pub ctx: sdl2::Sdl,
 }
 
-/// Inicializa SDL2 usando KMSDRM por padrão em dispositivos sem driver configurado.
+/// Eventos da plataforma necessários ao loop antes da camada de input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SdlEvent {
+    /// Pedido para fechar a janela.
+    Quit,
+    /// Tecla Escape pressionada.
+    Escape,
+    /// Evento que será consumido por uma camada de input posterior.
+    Other,
+}
+
+impl Sdl {
+    /// Retorna o subsistema de vídeo para criação de janelas SDL2.
+    pub fn video(&self) -> &VideoSubsystem {
+        &self.video
+    }
+
+    /// Coleta os eventos SDL pendentes para consumidores da camada de plataforma.
+    pub fn poll_raw_events(&mut self) -> Vec<Event> {
+        self.event_pump.poll_iter().collect()
+    }
+
+    /// Coleta os eventos SDL pendentes, preservando apenas saída e Escape nesta fase.
+    pub fn poll_events(&mut self) -> Vec<SdlEvent> {
+        self.poll_raw_events()
+            .into_iter()
+            .map(|event| match event {
+                Event::Quit { .. } => SdlEvent::Quit,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => SdlEvent::Escape,
+                _ => SdlEvent::Other,
+            })
+            .collect()
+    }
+}
+
+/// Inicializa SDL2 e o subsistema de vídeo, usando KMSDRM apenas sem escolha explícita.
 pub fn init_sdl() -> Result<Sdl, PlatformError> {
     if std::env::var_os("SDL_VIDEODRIVER").is_none() {
         hint::set("SDL_VIDEODRIVER", "KMSDRM");
@@ -23,5 +61,17 @@ pub fn init_sdl() -> Result<Sdl, PlatformError> {
     // SDL_KMSDRM_REQUIRE_DRM_MASTER controla a exigência de DRM master.
     // SDL_KMSDRM_DEVICE_INDEX seleciona a GPU quando há mais de um dispositivo DRM.
     // SDL_VIDEO_EGL_DRIVER e SDL_VIDEO_GL_DRIVER permitem indicar drivers EGL e OpenGL.
-    sdl2::init().map_err(PlatformError::Initialization)
+    let ctx = sdl2::init().map_err(PlatformError::Initialization)?;
+    let video = ctx.video().map_err(PlatformError::VideoSubsystem)?;
+    let event_pump = ctx.event_pump().map_err(PlatformError::EventPump)?;
+    log::info!(
+        "driver de vídeo SDL2 ativo: {}",
+        video.current_video_driver()
+    );
+
+    Ok(Sdl {
+        event_pump,
+        video,
+        ctx,
+    })
 }

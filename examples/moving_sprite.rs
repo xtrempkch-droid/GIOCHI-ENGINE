@@ -37,8 +37,8 @@ impl Game for MovingSprite {
 }
 
 fn main() -> Result<()> {
-    let sdl = init_sdl()?;
-    let video = sdl.video().map_err(anyhow::Error::msg)?;
+    let mut sdl = init_sdl()?;
+    let video = sdl.video();
     let config = EngineConfig {
         width: 640,
         height: 480,
@@ -48,7 +48,6 @@ fn main() -> Result<()> {
         .position_centered()
         .build()?;
     let mut canvas = window.into_canvas().accelerated().build()?;
-    let mut events = sdl.event_pump().map_err(anyhow::Error::msg)?;
     let mut context = RenderContext::new(&mut canvas);
     let mut engine = GameEngine::new(config);
     let mut game = MovingSprite {
@@ -59,7 +58,7 @@ fn main() -> Result<()> {
 
     engine.run(&mut game, &mut context, |game| {
         let mut running = true;
-        for event in events.poll_iter() {
+        for event in sdl.poll_raw_events() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {

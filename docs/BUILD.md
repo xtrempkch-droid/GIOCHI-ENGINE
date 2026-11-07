@@ -21,8 +21,8 @@ cargo run --bin giochi-demo
 cargo run --example moving_sprite
 ```
 
-`giochi-demo` é o smoke test que confirma a inicialização do pacote; `moving_sprite` abre a janela
-SDL2 e requer um display ou uma TTY com KMSDRM.
+`giochi-demo` abre uma janela preta e pode ser encerrado com Escape; `moving_sprite` é a
+demonstração de movimento. Ambos requerem um display ou uma TTY com KMSDRM.
 
 ## Verificações
 

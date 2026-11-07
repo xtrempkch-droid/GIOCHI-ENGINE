@@ -49,6 +49,6 @@ impl GameEngine {
         G: Game,
         F: FnMut(&mut G) -> bool,
     {
-        game_loop::run(game, context, keep_running);
+        game_loop::run_with_context(game, context, keep_running);
     }
 }
