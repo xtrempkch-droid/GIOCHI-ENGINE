@@ -16,8 +16,10 @@ flowchart TD
     Input --> SDL
     Render --> SDL
     Render --> Math[math: Vec2, retângulo e cor]
-    Assets[assets: validação e cache] --> Render
-    Audio[audio: configuração e som] --> SDL
+    Assets[assets: carregamento e cache] --> Render
+    Assets --> Audio
+    Core --> Audio[audio: dispositivo, efeitos e música]
+    Audio --> SDL
 ```
 
 O objetivo é manter regras de jogo e tipos reutilizáveis separados do acesso ao sistema.
@@ -54,8 +56,12 @@ são reportadas como `RenderError` e propagadas pelo loop.
 - `platform` alimenta `Input` porque é a dona do `EventPump`; assim `core` não conhece eventos SDL.
 - `scene` depende do contrato de desenho de `render`, mas não do loop concreto.
 - `math` não depende de SDL2 nem de outras camadas internas.
-- `assets` mantém cache genérico; a integração com carregamento/cache de áudio será feita na fase
-  de assets e áudio.
+- `assets` é a única camada que lê arquivos do jogo e mantém `ResourceManager` com `Rc` para
+  texturas, sons, músicas e fontes; `loader` traduz falhas de SDL_image/SDL_mixer/SDL_ttf em
+  `AssetError`.
+- `audio` encapsula `SDL_mixer`: `AudioSystem` é dono do dispositivo e dos canais, `Sound` é um
+  efeito curto (arquivo ou amostras PCM) e `MusicTrack` é uma música transmitida com controle.
+  `assets` usa `audio`, mas `audio` não conhece `assets`.
 
 ## Erros
 

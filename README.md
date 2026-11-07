@@ -53,7 +53,8 @@ O binário `giochi-demo` abre uma janela preta que pode ser encerrada com Escape
 demonstrações de desenho e movimento, use `cargo run --example hello_rect` e
 `cargo run --example moving_sprite`; esta última cria sua textura em memória. O exemplo
 `cargo run --example input_test` exercita teclado, mouse e gamepad: setas/WASD movem, Espaço troca
-a cor e o botão direito reposiciona o quadrado sob o ponteiro.
+a cor e o botão direito reposiciona o quadrado sob o ponteiro. `cargo run --example audio_test`
+sintetiza dois tons (Espaço e Enter) usando `AudioSystem` e `Sound`, sem arquivos de áudio.
 
 Para validar a qualidade:
 
@@ -129,6 +130,30 @@ fn main() {
         height: 16,
     }));
 }
+```
+
+## Assets e áudio
+
+`assets::ResourceManager` carrega cada recurso uma vez e compartilha por `Rc`:
+
+```rust
+use giochi_engine::assets::ResourceManager;
+
+let (mut context, texture_loader) = window.render_context_with_loader()?;
+let mut resources = ResourceManager::new();
+let player = resources.texture(&texture_loader, "assets/player.png")?;
+println!("cargas: {}", resources.stats().loads());
+```
+
+`audio::AudioSystem` abre o dispositivo e `Sound`/`MusicTrack` reproduzem efeitos e músicas:
+
+```rust
+use giochi_engine::audio::{AudioSystem, MixerConfig, Sound};
+
+let mut audio = AudioSystem::init(MixerConfig::MONO)?;
+audio.allocate_channels(8);
+let beep = Sound::tone(880.0, 0.2, audio.spec().frequency)?;
+beep.play()?;
 ```
 
 ## Validação em hardware

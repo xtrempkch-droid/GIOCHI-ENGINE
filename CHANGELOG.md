@@ -2,6 +2,10 @@
 
 ## [Não lançado]
 
+- Assets: `ResourceManager` com cache de texturas, sons, músicas e fontes, estatísticas de
+  acerto/falta e erros tipados de caminho, leitura e decodificação.
+- Áudio: `AudioSystem`, `Sound` (arquivo ou amostras PCM) e `MusicTrack` sobre SDL2_mixer, com
+  exemplo `audio_test` que sintetiza tons e reage à entrada.
 - Camada de renderização 2D: primitivas, texturas SDL_image, sprites e câmera mundo/tela.
 - Camada de entrada unificada: teclado, mouse e gamepad com transições por quadro.
 - Captura de pixels (`RenderContext::read_pixels`) para testes headless e evidência em hardware.

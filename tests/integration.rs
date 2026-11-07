@@ -2,7 +2,9 @@
 //! Status: cache, interseção, encerramento do loop e renderização headless cobertos.
 
 use giochi_engine::{
-    assets::manager::AssetManager,
+    assets::AssetError,
+    assets::{manager::AssetManager, FontLoader, ResourceManager},
+    audio::{AudioSystem, MixerConfig},
     core::game_loop::{self, Game},
     input::Input,
     math::rect::Rect,
@@ -176,4 +178,142 @@ fn texture_is_decoded_from_png_bytes() {
 
     let texture = Texture::from_bytes(&loader, RED_PNG).expect("PNG deve ser decodificado");
     assert_eq!(texture.dimensions(), (2, 2));
+}
+
+fn write_test_wave(path: &std::path::Path) {
+    use std::io::Write;
+
+    let sample_rate = 8_000_u32;
+    let samples: Vec<i16> = (0..800)
+        .map(|index| {
+            let phase = std::f32::consts::TAU * 440.0 * index as f32 / sample_rate as f32;
+            (phase.sin() * 8_000.0) as i16
+        })
+        .collect();
+    let data_size = (samples.len() * 2) as u32;
+
+    let mut file = std::fs::File::create(path).expect("o WAV de teste deve ser criado");
+    file.write_all(b"RIFF").unwrap();
+    file.write_all(&(36 + data_size).to_le_bytes()).unwrap();
+    file.write_all(b"WAVEfmt ").unwrap();
+    file.write_all(&16_u32.to_le_bytes()).unwrap();
+    file.write_all(&1_u16.to_le_bytes()).unwrap();
+    file.write_all(&1_u16.to_le_bytes()).unwrap();
+    file.write_all(&sample_rate.to_le_bytes()).unwrap();
+    file.write_all(&(sample_rate * 2).to_le_bytes()).unwrap();
+    file.write_all(&2_u16.to_le_bytes()).unwrap();
+    file.write_all(&16_u16.to_le_bytes()).unwrap();
+    file.write_all(b"data").unwrap();
+    file.write_all(&data_size.to_le_bytes()).unwrap();
+    for sample in samples {
+        file.write_all(&sample.to_le_bytes()).unwrap();
+    }
+}
+
+#[test]
+fn resource_manager_loads_texture_once_for_repeated_requests() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_VIDEODRIVER", "dummy");
+    let sdl = init_sdl().expect("o driver SDL2 dummy deve inicializar");
+    let mut window = Window::new(&sdl, "cache de texturas", 32, 32)
+        .expect("o driver dummy deve criar uma janela");
+    let (_context, loader) = window
+        .render_context_with_loader()
+        .expect("o contexto e o loader devem ser criados");
+
+    let directory = tempfile::tempdir().expect("o diretório temporário deve ser criado");
+    let path = directory.path().join("red.png");
+    std::fs::write(&path, RED_PNG).expect("o PNG de teste deve ser gravado");
+
+    let mut resources = ResourceManager::new();
+    let first = resources
+        .texture(&loader, &path)
+        .expect("a primeira requisição deve carregar o PNG");
+    let second = resources
+        .texture(&loader, &path)
+        .expect("a segunda requisição deve vir do cache");
+
+    assert!(std::rc::Rc::ptr_eq(&first, &second));
+    assert_eq!(resources.texture_count(), 1);
+    assert_eq!(
+        resources.stats().loads(),
+        1,
+        "o arquivo deve ser carregado uma vez"
+    );
+    assert_eq!(resources.stats().hits(), 1);
+    assert_eq!(resources.stats().requests(), 2);
+}
+
+#[test]
+fn resource_manager_loads_sound_once_for_repeated_requests() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_AUDIODRIVER", "dummy");
+    let audio = AudioSystem::init(MixerConfig::MONO).expect("o driver de áudio dummy deve abrir");
+
+    let directory = tempfile::tempdir().expect("o diretório temporário deve ser criado");
+    let path = directory.path().join("tone.wav");
+    write_test_wave(&path);
+
+    let mut resources = ResourceManager::new();
+    let first = resources.sound(&path).expect("o WAV deve ser carregado");
+    let second = resources
+        .sound(&path)
+        .expect("a segunda requisição deve vir do cache");
+
+    assert!(std::rc::Rc::ptr_eq(&first, &second));
+    assert_eq!(resources.sound_count(), 1);
+    assert_eq!(resources.stats().loads(), 1);
+    assert_eq!(resources.stats().hits(), 1);
+    assert!(first.volume() > 0.0);
+    drop(audio);
+}
+
+#[test]
+fn sound_plays_on_dummy_audio_device() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_AUDIODRIVER", "dummy");
+    let mut audio =
+        AudioSystem::init(MixerConfig::MONO).expect("o driver de áudio dummy deve abrir");
+    assert_eq!(audio.allocate_channels(2), 2);
+    assert_eq!(audio.spec().channels, 1);
+
+    let tone = giochi_engine::audio::Sound::tone(440.0, 0.1, audio.spec().frequency)
+        .expect("o tom deve ser sintetizado");
+    tone.play().expect("o tom deve ser enfileirado no mixer");
+    assert!(audio.playing_channels() >= 0);
+}
+
+#[test]
+fn resource_manager_reports_missing_resources() {
+    let _guard = lock_sdl();
+    std::env::set_var("SDL_VIDEODRIVER", "dummy");
+    let missing = std::path::Path::new("/caminho/que/nao/existe.png");
+    let sdl = init_sdl().expect("o driver SDL2 dummy deve inicializar");
+    let mut window =
+        Window::new(&sdl, "recurso ausente", 16, 16).expect("o driver dummy deve criar uma janela");
+    let (_context, loader) = window
+        .render_context_with_loader()
+        .expect("o contexto e o loader devem ser criados");
+    let mut resources = ResourceManager::new();
+
+    assert!(matches!(
+        resources.texture(&loader, missing),
+        Err(AssetError::InvalidPath { .. })
+    ));
+    assert_eq!(
+        resources.stats().loads(),
+        1,
+        "a falta também conta como tentativa"
+    );
+    assert!(resources.is_empty());
+}
+
+#[test]
+fn font_loader_reports_missing_font_file() {
+    let _guard = lock_sdl();
+    let loader = FontLoader::new().expect("o SDL_ttf deve inicializar");
+    assert!(matches!(
+        loader.load("/caminho/que/nao/existe.ttf", 16),
+        Err(AssetError::InvalidPath { .. })
+    ));
 }

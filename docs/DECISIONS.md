@@ -58,13 +58,36 @@
 - A zona morta padrão dos analógicos é 0.2, configurável com `GamepadState::set_deadzone`. O
   controle é declarado antes do subsistema no struct para ser liberado primeiro.
 
+## Assets e áudio
+
+- `ResourceManager` guarda recursos em `Rc` para permitir que sprite, cena e cache compartilhem a
+  mesma textura sem recarregar o arquivo. Cada requisição incrementa `hit` ou `miss`; `loads()`
+  expõe apenas as cargas reais, que é o critério usado nos testes (duas chamadas, um load).
+- O cache não faz `Drop` dos recursos SDL: texturas e fontes têm lifetime ligado ao
+  `TextureLoader`/`FontLoader` da janela. Por isso o cache deve ser declarado depois do loader,
+  garantindo que seja liberado antes dele.
+- `loader` diferencia caminho inválido (`InvalidPath`) de falha de leitura (`Io`) e de
+  decodificação (`Texture`, `Audio`, `Font`), para que a aplicação possa reagir a recurso ausente
+  sem tratar como erro fatal de backend.
+- `Sound` aceita arquivo ou amostras PCM de 16 bits (`from_samples`) e tem `tone()` para síntese
+  simples; isso permite efeitos procedurais e testes sem assets de áudio versionados.
+- `MusicTrack` encapsula `sdl2::mixer::Music` e expõe `play`, `play_loop`, `pause`, `resume`,
+  `stop` e volume. Pausa/retomada são globais no SDL_mixer e afetam a música corrente, o que está
+  documentado na API.
+- `AudioSystem` abre o dispositivo no `init` e fecha no `Drop`; `allocate_channels` só cresce, nunca
+  reduz, para não interromper canais em uso. Falta de dispositivo é erro tipado
+  (`AudioError::DeviceOpen`), e o exemplo cai para o driver `dummy` quando a imagem não tem backend
+  de áudio.
+- Fontes ficam no `assets` porque o acesso ao arquivo e o cache são responsabilidade de recursos;
+  o desenho de texto será adicionado junto de UI/`ttf` em fase posterior.
+
 ## Estado da implementação
 
 - Implementados: inicialização SDL2, janela/canvas, loop fixo, renderização de primitivas e
   texturas, sprites, câmera mundo/tela, entrada de teclado/mouse/gamepad e estruturas básicas de
   matemática/cache/estado.
-- Base parcial: cenas, cache de texturas e áudio. A textura já usa SDL_image e o gamepad usa
-  SDL2_controller; a integração do cache de recursos e do mixer continua nas próximas fases.
+- Base parcial: cenas e integração final (`Engine` com `SceneManager`). Assets, áudio, entrada,
+  renderização e plataforma estão implementados e cobertos por testes.
 - Erros de biblioteca usam `thiserror`; aplicações podem agregar contexto com `anyhow`.
 - `thiserror` fornece erros tipados e sem dependência de contexto de aplicação na biblioteca;
   `anyhow` facilita a composição e apresentação de erros no binário e nos exemplos.
