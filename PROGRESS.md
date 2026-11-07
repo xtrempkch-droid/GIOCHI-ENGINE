@@ -200,10 +200,26 @@ Data: 2026-11-06
 - O passo de verificação do workflow também foi exercitado: detectou uma `libSDL2` x86-64 que
   havia entrado no pacote e falhou como deveria.
 
+## Manutenção pós-0.1.0 (aplicada)
+
+- `v0.1.0` tagueada em `1100e17`; o workflow de Release executou a partir da tag.
+- Dependências sem uso removidas (`serde`, `serde_yaml`, `approx`): o grafo direto caiu para 9
+  entradas e o build não compila mais `serde_derive`/`jiff`.
+- `.github/dependabot.yml`: `ignore` para `dtolnay/rust-toolchain` (o pin é o gate de MSRV) e para
+  `glam` minor/major (0.34 exige Cargo > 1.80); agrupamento de atualizações patch/minor para
+  reduzir ruído.
+- PRs do Dependabot #1 (rust-toolchain 1.120.0) e #5 (glam 0.34.2) fechados por quebrarem o gate.
+- Relatório técnico movido da raiz para `docs/relatorio-tecnico-arm64.md`, com nome normalizado e
+  nota indicando que é documento histórico.
+
 ## Bloqueios / pendências
 
 - A imagem do GIOCHI KONSOL OS não traz backend ALSA no SDL2, então o áudio real continua
   indisponível no aparelho (a engine degrada para silêncio).
+- Cobertura de testes concentrada: `platform`, `assets` e `math` não têm testes unitários próprios
+  (assets e math são exercitados pela integração). Não há medição de cobertura no CI.
+- PRs #2/#3/#4 do Dependabot (checkout, upload-artifact, setup-qemu) seguem abertos; exigem
+  Node 24 no runner, por isso o CI emite aviso de deprecação do Node 20.
 - Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem
   sem bibliotecas extras.
 - O floating point de gamepad/sticks usa os eixos crus do SDL2; mapeamentos específicos de

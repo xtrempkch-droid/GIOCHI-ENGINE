@@ -1,6 +1,9 @@
----
+# Relatório técnico: motor SDL2/KMSDRM em Rust para ARM64
 
-# 📋 Relatório Técnico: Motor SDL2/KMSDRM em Rust para ARM64
+> Documento histórico de pesquisa que orientou a implementação da engine. Algumas
+> recomendações foram substituídas por decisões posteriores, registradas em
+> [DECISIONS.md](DECISIONS.md) — em especial o uso do SDL2 do sistema em alvos
+> embarcados (`sdl2-system`) em vez do `bundled` do `cross`.
 
 ## 1. Visão Geral e Contexto
 

@@ -4,7 +4,26 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Uma única PR para atualizações compatíveis; reduz ruído e conflitos.
+      cargo-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # O glam 0.34 exige Cargo mais novo que o MSRV 1.80 e quebra o job de MSRV.
+      # Atualizar junto com o MSRV, de forma deliberada.
+      - dependency-name: glam
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    ignore:
+      # Este pin É o gate de MSRV do projeto: ele precisa continuar em 1.80.0.
+      # O Dependabot propõe versões inexistentes (por exemplo 1.120.0) e falha no setup.
+      - dependency-name: dtolnay/rust-toolchain

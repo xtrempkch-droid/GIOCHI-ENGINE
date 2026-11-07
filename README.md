@@ -234,6 +234,7 @@ captura de pixels confirmou cor e geometria do quadro renderizado nos exemplos `
 - [KMSDRM](docs/KMSDRM.md)
 - [Cross-compilation ARM64](docs/CROSS_COMPILE.md)
 - [Decisões de arquitetura](docs/DECISIONS.md)
+- [Relatório técnico (histórico)](docs/relatorio-tecnico-arm64.md)
 - [Progresso da implementação](PROGRESS.md)
 - [Registro de alterações](CHANGELOG.md)
 

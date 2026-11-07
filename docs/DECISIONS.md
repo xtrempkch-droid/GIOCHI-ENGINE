@@ -58,6 +58,17 @@
 - A zona morta padrão dos analógicos é 0.2, configurável com `GamepadState::set_deadzone`. O
   controle é declarado antes do subsistema no struct para ser liberado primeiro.
 
+## Dependências
+
+- `serde`, `serde_yaml` e `approx` foram **removidos** em 0.1.0: estavam declarados na
+  especificação inicial, mas nenhum módulo os usava. Mantê-los compilava `serde_derive` e `jiff`
+  em todo build, aumentava a superfície de dependências e não agregava comportamento. Quando
+  houver configuração de jogo em YAML (roadmap), a dependência volta junto do uso real.
+- O pin `dtolnay/rust-toolchain@1.80.0` no job de MSRV está protegido por `ignore` no
+  Dependabot: ele É o gate de versão mínima, e o bot propõe versões inexistentes (`1.120.0`).
+  `glam` também está ignorado em minor/major até que o MSRV seja elevado de forma deliberada,
+  porque `glam 0.34` exige um Cargo mais novo que o 1.80.
+
 ## Release e empacotamento
 
 - O release usa `cross` para produzir binário e exemplos AArch64, mas **não distribui o
