@@ -4,6 +4,7 @@
 use giochi_engine::{
     assets::manager::AssetManager,
     core::game_loop::{self, Game},
+    input::Input,
     math::rect::Rect,
     platform::{init_sdl, Window},
     render::{renderer::RenderContext, texture::Texture, RenderError},
@@ -99,7 +100,7 @@ struct CountingGame {
 }
 
 impl Game for CountingGame {
-    fn update(&mut self, _dt: f32) {
+    fn update(&mut self, _dt: f32, _input: &Input) {
         self.updates += 1;
     }
 

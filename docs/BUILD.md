@@ -18,11 +18,14 @@ desenvolvimento disponíveis no sistema.
 cargo build
 cargo test
 cargo run --bin giochi-demo
+cargo run --example hello_rect
 cargo run --example moving_sprite
+cargo run --example input_test
 ```
 
-`giochi-demo` abre uma janela preta e pode ser encerrado com Escape; `moving_sprite` é a
-demonstração de movimento. Ambos requerem um display ou uma TTY com KMSDRM.
+`giochi-demo` abre uma janela preta e pode ser encerrado com Escape. `hello_rect` anima uma
+primitiva, `moving_sprite` demonstra textura e movimento e `input_test` reúne teclado, mouse e
+gamepad. Todos requerem um display ou uma TTY com KMSDRM.
 
 ## Verificações
 

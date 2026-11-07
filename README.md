@@ -51,7 +51,9 @@ cargo run --bin giochi-demo
 
 O binário `giochi-demo` abre uma janela preta que pode ser encerrada com Escape. Para as
 demonstrações de desenho e movimento, use `cargo run --example hello_rect` e
-`cargo run --example moving_sprite`; esta última cria sua textura em memória.
+`cargo run --example moving_sprite`; esta última cria sua textura em memória. O exemplo
+`cargo run --example input_test` exercita teclado, mouse e gamepad: setas/WASD movem, Espaço troca
+a cor e o botão direito reposiciona o quadrado sob o ponteiro.
 
 Para validar a qualidade:
 

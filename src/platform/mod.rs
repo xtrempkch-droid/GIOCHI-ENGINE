@@ -1,12 +1,12 @@
 //! Integração com SDL2 e recursos específicos do sistema operacional.
-//! Status: inicialização SDL2 e adaptador de janela implementados.
+//! Status: inicialização SDL2, janela, entrada e eventos implementados.
 
 use thiserror::Error;
 
 pub mod sdl;
 pub mod window;
 
-pub use sdl::{init_sdl, Sdl, SdlEvent};
+pub use sdl::{init_sdl, Sdl};
 pub use window::{RenderContext, Window};
 
 /// Falhas na inicialização SDL2, criação de janela ou recursos de plataforma.

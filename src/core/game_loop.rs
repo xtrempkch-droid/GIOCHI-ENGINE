@@ -1,5 +1,5 @@
 //! Loop de jogo com passo fixo, acumulador e limite de tempo por quadro.
-//! Status: implementação funcional com callback de eventos.
+//! Status: entrada unificada, atualização fixa e encerramento por Quit/Escape implementados.
 
 use std::time::{Duration, Instant};
 
@@ -7,10 +7,8 @@ use anyhow::Result;
 
 use crate::{
     core::time::Time,
-    platform::{
-        sdl::{Sdl, SdlEvent},
-        window::Window,
-    },
+    input::Input,
+    platform::{sdl::Sdl, window::Window},
     render::{renderer::RenderContext, RenderError},
 };
 
@@ -21,23 +19,22 @@ pub const MAX_FRAME_TIME: f64 = 0.25;
 
 /// Contrato mínimo implementado por um jogo controlado pela engine.
 pub trait Game {
-    /// Atualiza a simulação em segundos.
-    fn update(&mut self, dt: f32);
+    /// Atualiza a simulação em segundos com o estado de entrada do quadro.
+    ///
+    /// A entrada reflete os eventos do quadro atual; transições `pressed` e
+    /// `released` podem ser observadas por cada chamada de passo fixo.
+    fn update(&mut self, dt: f32, input: &Input);
     /// Desenha um quadro e propaga falhas do backend de renderização.
     fn render(&mut self, ctx: &mut RenderContext<'_>) -> Result<(), RenderError>;
 }
 
 /// Executa o jogo até receber um evento de saída ou a tecla Escape.
 pub fn run<G: Game>(game: &mut G, window: &mut Window, sdl: &mut Sdl) -> Result<()> {
+    let mut input = Input::new(&sdl.ctx);
     run_fixed(
         game,
-        |_| {
-            let should_exit = sdl
-                .poll_events()
-                .iter()
-                .any(|event| matches!(event, SdlEvent::Quit | SdlEvent::Escape));
-            !should_exit
-        },
+        &mut input,
+        |input| sdl.poll_input(input),
         |game| {
             let mut context: RenderContext<'_> = window.render_context();
             game.render(&mut context)?;
@@ -48,28 +45,37 @@ pub fn run<G: Game>(game: &mut G, window: &mut Window, sdl: &mut Sdl) -> Result<
     Ok(())
 }
 
-/// Executa o mesmo loop fixo com um contexto e uma rotina de eventos fornecidos pelo consumidor.
-pub fn run_with_context<G, F>(
+/// Executa o mesmo loop fixo usando um contexto de desenho já emprestado.
+///
+/// Indicado para jogos que precisam manter texturas ou câmera entre quadros.
+pub fn run_with_context<G: Game>(
     game: &mut G,
     ctx: &mut RenderContext<'_>,
-    keep_running: F,
-) -> anyhow::Result<()>
-where
-    G: Game,
-    F: FnMut(&mut G) -> bool,
-{
-    run_fixed(game, keep_running, |game| {
-        game.render(ctx)?;
-        ctx.present();
-        Ok(())
-    })?;
+    sdl: &mut Sdl,
+) -> Result<()> {
+    let mut input = Input::new(&sdl.ctx);
+    run_fixed(
+        game,
+        &mut input,
+        |input| sdl.poll_input(input),
+        |game| {
+            game.render(ctx)?;
+            ctx.present();
+            Ok(())
+        },
+    )?;
     Ok(())
 }
 
-fn run_fixed<G, P, R>(game: &mut G, mut poll_events: P, mut render: R) -> Result<(), RenderError>
+fn run_fixed<G, P, R>(
+    game: &mut G,
+    input: &mut Input,
+    mut poll_events: P,
+    mut render: R,
+) -> Result<(), RenderError>
 where
     G: Game,
-    P: FnMut(&mut G) -> bool,
+    P: FnMut(&mut Input) -> bool,
     R: FnMut(&mut G) -> Result<(), RenderError>,
 {
     let fixed_dt = f64::from(FIXED_DT);
@@ -78,11 +84,11 @@ where
     let mut accumulator = 0.0_f64;
     let mut next_frame = start;
 
-    while poll_events(game) {
+    while poll_events(input) {
         accumulator += f64::from(time.tick(Instant::now()).min(MAX_FRAME_TIME as f32));
 
         while accumulator >= fixed_dt {
-            game.update(FIXED_DT);
+            game.update(FIXED_DT, input);
             accumulator -= fixed_dt;
         }
 

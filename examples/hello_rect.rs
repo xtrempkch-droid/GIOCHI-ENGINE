@@ -4,6 +4,7 @@
 use anyhow::Result;
 use giochi_engine::{
     core::game_loop::{self, Game},
+    input::Input,
     math::{color::Color, rect::Rect},
     platform::{init_sdl, Window},
     render::{renderer::RenderContext, RenderError},
@@ -15,7 +16,7 @@ struct OrbitingRect {
 }
 
 impl Game for OrbitingRect {
-    fn update(&mut self, dt: f32) {
+    fn update(&mut self, dt: f32, _input: &Input) {
         self.elapsed += dt;
     }
 

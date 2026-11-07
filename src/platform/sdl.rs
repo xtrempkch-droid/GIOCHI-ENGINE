@@ -1,7 +1,9 @@
 //! Inicialização SDL2 com seleção condicional do driver de vídeo KMSDRM.
-//! Status: inicialização, seleção de driver, eventos de saída e diagnóstico tipado implementados.
+//! Status: inicialização, driver, coleta de eventos e entrada unificada implementados.
 
 use sdl2::{event::Event, hint, keyboard::Keycode, EventPump, VideoSubsystem};
+
+use crate::input::Input;
 
 use super::PlatformError;
 
@@ -12,17 +14,6 @@ pub struct Sdl {
     pub video: VideoSubsystem,
     /// Contexto raiz SDL2.
     pub ctx: sdl2::Sdl,
-}
-
-/// Eventos da plataforma necessários ao loop antes da camada de input.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SdlEvent {
-    /// Pedido para fechar a janela.
-    Quit,
-    /// Tecla Escape pressionada.
-    Escape,
-    /// Evento que será consumido por uma camada de input posterior.
-    Other,
 }
 
 impl Sdl {
@@ -36,19 +27,25 @@ impl Sdl {
         self.event_pump.poll_iter().collect()
     }
 
-    /// Coleta os eventos SDL pendentes, preservando apenas saída e Escape nesta fase.
-    pub fn poll_events(&mut self) -> Vec<SdlEvent> {
-        self.poll_raw_events()
-            .into_iter()
-            .map(|event| match event {
-                Event::Quit { .. } => SdlEvent::Quit,
-                Event::KeyDown {
+    /// Coleta eventos, atualiza a entrada portátil e informa se o loop deve continuar.
+    ///
+    /// Retorna `false` quando a janela pede para fechar ou quando Escape é pressionado.
+    pub fn poll_input(&mut self, input: &mut Input) -> bool {
+        let events = self.poll_raw_events();
+        input.begin_frame();
+        input.update(&events);
+        !events.iter().any(Self::requests_exit)
+    }
+
+    fn requests_exit(event: &Event) -> bool {
+        matches!(
+            event,
+            Event::Quit { .. }
+                | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => SdlEvent::Escape,
-                _ => SdlEvent::Other,
-            })
-            .collect()
+                }
+        )
     }
 }
 

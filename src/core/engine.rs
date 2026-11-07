@@ -1,10 +1,11 @@
 //! Fachada de alto nível para inicializar e conduzir um jogo.
-//! Status: configuração e orquestração do loop implementadas; SDL2 fica a cargo da aplicação.
+//! Status: configuração e orquestração do loop com entrada unificada implementadas.
 //!
 //! A criação de janela é delegada à camada de plataforma para manter SDL2 fora deste módulo.
 
 use crate::{
     core::game_loop::{self, Game},
+    platform::Sdl,
     render::renderer::RenderContext,
 };
 
@@ -43,17 +44,13 @@ impl GameEngine {
         self.config
     }
 
-    /// Executa o loop fixo até o callback de eventos indicar o encerramento.
-    pub fn run<G, F>(
+    /// Executa o loop fixo até o usuário encerrar a janela ou pressionar Escape.
+    pub fn run<G: Game>(
         &mut self,
         game: &mut G,
         context: &mut RenderContext<'_>,
-        keep_running: F,
-    ) -> anyhow::Result<()>
-    where
-        G: Game,
-        F: FnMut(&mut G) -> bool,
-    {
-        game_loop::run_with_context(game, context, keep_running)
+        sdl: &mut Sdl,
+    ) -> anyhow::Result<()> {
+        game_loop::run_with_context(game, context, sdl)
     }
 }

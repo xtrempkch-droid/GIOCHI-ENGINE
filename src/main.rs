@@ -3,6 +3,7 @@
 use anyhow::Result;
 use giochi_engine::{
     core::game_loop::{self, Game},
+    input::Input,
     math::color::Color,
     platform::{init_sdl, Window},
     render::{renderer::RenderContext, RenderError},
@@ -11,7 +12,7 @@ use giochi_engine::{
 struct DemoGame;
 
 impl Game for DemoGame {
-    fn update(&mut self, _dt: f32) {}
+    fn update(&mut self, _dt: f32, _input: &Input) {}
 
     fn render(&mut self, context: &mut RenderContext<'_>) -> Result<(), RenderError> {
         context.clear(Color::rgb(0, 0, 0));

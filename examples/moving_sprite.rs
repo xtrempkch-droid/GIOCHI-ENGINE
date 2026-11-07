@@ -1,5 +1,5 @@
-//! Move uma textura procedural com as setas; Escape ou Quit encerra o programa.
-//! Status: exemplo funcional de textura, sprite, primitivas e eventos de teclado.
+//! Move uma textura procedural com setas, WASD ou analógico do gamepad.
+//! Status: exemplo funcional de textura, sprite e entrada unificada.
 
 use std::rc::Rc;
 
@@ -7,6 +7,7 @@ use anyhow::Result;
 use giochi_engine::{
     core::engine::{EngineConfig, GameEngine},
     core::game_loop::Game,
+    input::Input,
     math::{color::Color, rect::Rect},
     platform::{init_sdl, Window},
     render::{
@@ -16,19 +17,19 @@ use giochi_engine::{
         RenderError,
     },
 };
-use sdl2::{event::Event, keyboard::Keycode};
 
 struct MovingSprite<'a> {
     sprite: Sprite<'a>,
     x: f32,
     y: f32,
-    direction: (f32, f32),
 }
 
 impl Game for MovingSprite<'_> {
-    fn update(&mut self, dt: f32) {
-        self.x = (self.x + self.direction.0 * 240.0 * dt).clamp(0.0, 600.0);
-        self.y = (self.y + self.direction.1 * 240.0 * dt).clamp(0.0, 440.0);
+    fn update(&mut self, dt: f32, input: &Input) {
+        let direction =
+            (input.keyboard.movement() + input.gamepad.left_stick()).clamp_length_max(1.0);
+        self.x = (self.x + direction.x * 240.0 * dt).clamp(0.0, 600.0);
+        self.y = (self.y + direction.y * 240.0 * dt).clamp(0.0, 440.0);
     }
 
     fn render(&mut self, context: &mut RenderContext<'_>) -> Result<(), RenderError> {
@@ -58,31 +59,10 @@ fn main() -> Result<()> {
         sprite: Sprite::new(texture),
         x: 300.0,
         y: 220.0,
-        direction: (0.0, 0.0),
     };
 
     let mut engine = GameEngine::new(config);
-    engine.run(&mut game, &mut context, |game| {
-        let mut running = true;
-        for event in sdl.poll_raw_events() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => running = false,
-                Event::KeyDown {
-                    keycode: Some(key), ..
-                } => set_direction(game, key, true),
-                Event::KeyUp {
-                    keycode: Some(key), ..
-                } => set_direction(game, key, false),
-                _ => {}
-            }
-        }
-        running
-    })?;
-    Ok(())
+    engine.run(&mut game, &mut context, &mut sdl)
 }
 
 fn create_procedural_texture<'loader, 'window>(
@@ -104,14 +84,4 @@ fn create_procedural_texture<'loader, 'window>(
         }
     }
     Texture::from_rgba(loader, 64, 64, &pixels)
-}
-
-fn set_direction(game: &mut MovingSprite<'_>, key: Keycode, pressed: bool) {
-    match key {
-        Keycode::Left => game.direction.0 = if pressed { -1.0 } else { 0.0 },
-        Keycode::Right => game.direction.0 = if pressed { 1.0 } else { 0.0 },
-        Keycode::Up => game.direction.1 = if pressed { -1.0 } else { 0.0 },
-        Keycode::Down => game.direction.1 = if pressed { 1.0 } else { 0.0 },
-        _ => {}
-    }
 }
