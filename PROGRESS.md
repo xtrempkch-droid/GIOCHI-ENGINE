@@ -1,6 +1,6 @@
 # Progresso da implementação
 
-## Última fase concluída: Fase 5 — Cenas e integração
+## Última fase concluída: Fase 6 — Polimento, CI e release
 
 Data: 2026-11-06
 
@@ -14,9 +14,9 @@ Data: 2026-11-06
 | Fase 3 — Input | Concluída | Teclado, mouse e gamepad com estados por quadro, integração no loop e exemplo `input_test`. |
 | Fase 4 — Assets e áudio | Concluída | Cache de texturas/sons/músicas/fontes, `AudioSystem`, efeitos, música e exemplo `audio_test`. |
 | Fase 5 — Cenas e integração | Concluída | `Scene`/`SceneManager`, fachada `Engine` com todos os subsistemas e `mini_game` jogável. |
-| Fase 6 — Polimento e release | Pendente | Finalizar CI, documentação de produção, validação ARM64 e release. |
+| Fase 6 — Polimento e release | Concluída | `API_GUIDE`, CI com docs/links/actionlint, release por tag com artefatos e changelog consolidado. |
 
-## Gates validados na Fase 5
+## Gates validados na Fase 6
 
 - [x] `cargo fmt --all -- --check`
 - [x] `cargo clippy --locked --all-targets -- -D warnings`
@@ -24,13 +24,44 @@ Data: 2026-11-06
 - [x] `cargo test --locked --target x86_64-unknown-linux-gnu` (34 testes: 21 unitários e 13 de
   integração; ciclo de vida de cena, transições push/pop/replace, consumo de eventos, ciclo da
   `Engine` e encerramento por Escape, além dos testes anteriores)
-- [x] `cargo check --locked --target aarch64-unknown-linux-gnu --all-targets` — passou com o
-  `aarch64-linux-gnu-gcc` instalado no host. A cadeia `cross` com QEMU/binfmt continua validada
-  apenas pelo workflow.
+- [x] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items`
+- [x] `actionlint 1.7.7` em `ci.yml`, `release.yml` e `cross-compile.yml` (inclui shellcheck dos
+  scripts embutidos)
+- [x] Verificação de links relativos em `README.md` e `docs/*.md`
+- [x] Exemplos do `docs/API_GUIDE.md` compilados contra a API pública (`cargo check` em crate
+  separado), confirmando que o guia corresponde ao código
+- [x] `cross build --locked --release --target aarch64-unknown-linux-gnu --all-targets` — gate
+  ARM64 executado com QEMU/binfmt local; toda a árvore (lib, binário, exemplos e testes) compila.
+  `cargo check --target aarch64` nativo com a feature `bundled` não serve como gate: o CMake do
+  `sdl2-sys` encontra bibliotecas x86_64 do host e o link cruzado falha (`cannot find
+  -lsamplerate`). `cross check` em perfil debug esbarra em `/usr/bin/ccache` ausente na imagem;
+  o gate equivalente e confiável é o `cross build --release`.
 - [x] `cargo doc --locked --no-deps --document-private-items`
 - [x] Execução em hardware ARM64 real (R35S/RK3326, GIOCHI KONSOL OS, Buildroot 2024.02,
   kernel 6.12): driver `KMSDRM` ativo, `/dev/dri/card0` aberto, gamepad `r36s_Gamepad` detectado e
   os exemplos `hello_rect`, `moving_sprite` e `input_test` ativos em console sem X11/Wayland.
+
+## Entregue na Fase 6
+
+- `docs/API_GUIDE.md`: guia completo com instalação, dois caminhos de uso, primeiro jogo,
+  ciclo de vida/transições de cena, entrada, renderização, assets, áudio, loop manual, testes
+  headless, tabela de erros e armadilhas (incluindo ordem de declaração de `FontCache`).
+- `release.yml` reescrito: `workflow_dispatch` com `dry_run` para pré-visualizar sem publicar,
+  build `--locked --all-targets`, empacotamento do binário e dos 5 exemplos, `rlib` da biblioteca,
+  tarball agregado, `SHA256SUMS`, verificação de arquitetura via `file` e upload de artefato.
+- `ci.yml`: build de release com `--all-targets`, `cargo doc` da feature `sdl2-system`, job de
+  documentação com `RUSTDOCFLAGS=-D warnings`, verificação de links em Markdown e job `actionlint`.
+- `Cargo.toml`: `readme`, `keywords` e `categories` para publicação.
+- `CHANGELOG.md` consolidado em `0.1.0` (nenhuma tag existia) com seções Adicionado/Validado.
+- `README.md` finalizado: tabela de status por camada, compiladores cruzados, link para o guia de
+  API e para `PROGRESS`/`CHANGELOG`.
+- `CONTRIBUTING.md` já cobria fmt/clippy/test/doc/actionlint e a nota de hardware ARM64.
+- `packaging/LEIA-ME.txt`: requisitos de runtime e modo de execução em KMSDRM, copiado para o
+  tarball do release.
+- `docs/CROSS_COMPILE.md`: nova seção sobre o que o `cross` produz, a lista real de dependências do
+  SDL2 `bundled` e as duas opções corretas para alvo embarcado.
+- `docs/DECISIONS.md`: decisão de não distribuir o SDL2 `bundled` e registro da tentativa
+  descartada (`SDL2_TOOLCHAIN`), com o motivo técnico.
 
 ## Entregue na Fase 5
 
@@ -152,16 +183,38 @@ Data: 2026-11-06
   presentes.
 - Após os testes, `/etc/inittab` foi restaurado e o aparelho reiniciado; o launcher voltou a rodar.
 
+## Cadeia `cross` validada localmente
+
+- `qemu-aarch64` registrado via `docker run --privileged --rm tonistiigi/binfmt --install arm64`
+  permitiu rodar a cadeia real: `Cross.toml` construiu a imagem com as dependências ARM64 e
+  `cross build --locked --release --target aarch64-unknown-linux-gnu` concluiu com sucesso.
+- Achado importante: o SDL2 `bundled` gerado pelo `cross` é uma shared library ligada a
+  `libsndio`, `libwayland-*`, `libxkbcommon`, `libdecor`, `libjack`, `libpipewire`, `libpulse` e
+  `libsamplerate`. Testado no R35S, o binário falhou com
+  `error while loading shared libraries: libsndio.so.7: cannot open shared object file`.
+- Correção: o release não empacota essa biblioteca; o binário usa o SDL2 do sistema
+  (`>= 2.26` com KMSDRM). O mesmo binário do `cross`, executado no R35S com o SDL2 2.28.5 da
+  imagem, abriu KMSDRM e detectou o `r36s_Gamepad`.
+- O pacote final (`giochi-engine-v0.1.0-test-aarch64-unknown-linux-gnu.tar.gz`) foi enviado ao
+  aparelho: `giochi-demo`, `giochi-hello_rect` e `giochi-mini_game` ficaram ativos em KMSDRM.
+- O passo de verificação do workflow também foi exercitado: detectou uma `libSDL2` x86-64 que
+  havia entrado no pacote e falhou como deveria.
+
 ## Bloqueios / pendências
 
-- Validar a cadeia `cross` com QEMU/binfmt no workflow (a validação local usou o sysroot do
-  aparelho, que não depende de emulação).
+- A imagem do GIOCHI KONSOL OS não traz backend ALSA no SDL2, então o áudio real continua
+  indisponível no aparelho (a engine degrada para silêncio).
 - Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem
   sem bibliotecas extras.
 - O floating point de gamepad/sticks usa os eixos crus do SDL2; mapeamentos específicos de
   hardware (ex.: inversão de eixo) ainda podem ser adicionados em uma fase de polimento.
 
-## Próxima fase: Fase 6 — Polimento e release
+## Roadmap pós-0.1.0
 
-Publicar `docs/API_GUIDE.md`, fechar o release automatizado para tags `v*`, validar a cadeia `cross`
-com QEMU no CI e revisar a documentação de produção.
+Fases 0 a 6 concluídas. Próximos incrementos sugeridos, fora do escopo original:
+
+- Renderização de texto com `FontCache` + `RenderContext` (helper `draw_text`).
+- Animação de sprites por quadros (`AnimationClip`, `Animator`).
+- Física 2D simples (AABB com resposta, camadas) sobre `math::Rect`.
+- Áudio posicional/pan e controle por canal no `AudioSystem`.
+- Empacotamento (`.tar.gz` por distro, `AppImage`/Buildroot package) e publicação no crates.io.

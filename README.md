@@ -30,6 +30,10 @@ Em Debian/Ubuntu, instale os pacotes abaixo para desenvolvimento e execução:
 | `cmake` | Construção do SDL2 bundled |
 | `gcc` | Compilador C usado pelo SDL2 bundled |
 
+Compiladores cruzados (apenas para ARM64 local): `gcc-aarch64-linux-gnu` e, para a
+feature `sdl2-system`, um sysroot com as bibliotecas SDL do dispositivo — veja
+[docs/CROSS_COMPILE.md](docs/CROSS_COMPILE.md).
+
 ```sh
 sudo apt-get update
 sudo apt-get install build-essential pkg-config cmake \
@@ -199,6 +203,21 @@ let beep = Sound::tone(880.0, 0.2, audio.spec().frequency)?;
 beep.play()?;
 ```
 
+## Status da engine
+
+| Camada | Estado |
+|---|---|
+| `platform` (SDL2/KMSDRM, janela) | implementada |
+| `core` (loop fixo, tempo, fachada `Engine`) | implementada |
+| `input` (teclado, mouse, gamepad) | implementada |
+| `render` (primitivas, texturas, sprites, câmera) | implementada |
+| `assets` (cache, fontes) | implementada |
+| `audio` (mistura, efeitos, música) | implementada |
+| `scene` (trait, contexto, pilha) | implementada |
+
+O que ainda não existe: renderização de texto na tela, física/colisão além de `Rect`,
+animação de sprites por quadros e empacotamento para distribuições.
+
 ## Validação em hardware
 
 A engine foi executada em um GIOCHI KONSOL OS (RK3326, Buildroot, kernel 6.12) a partir de um
@@ -209,10 +228,13 @@ captura de pixels confirmou cor e geometria do quadro renderizado nos exemplos `
 
 ## Documentação e contribuição
 
+- [Guia da API](docs/API_GUIDE.md) — como usar `Engine`, `Scene`, entrada, render, assets e áudio
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Build e dependências](docs/BUILD.md)
 - [KMSDRM](docs/KMSDRM.md)
 - [Cross-compilation ARM64](docs/CROSS_COMPILE.md)
 - [Decisões de arquitetura](docs/DECISIONS.md)
+- [Progresso da implementação](PROGRESS.md)
+- [Registro de alterações](CHANGELOG.md)
 
 Para propor correções ou funcionalidades, consulte [CONTRIBUTING.md](CONTRIBUTING.md).

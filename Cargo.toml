@@ -7,6 +7,9 @@ license = "MIT"
 description = "Engine 2D SDL2/KMSDRM para GIOCHI-SYSTEM."
 repository = "https://github.com/xtrempkch-droid/GIOCHI-SYSTEM"
 authors = ["GIOCHI-SYSTEM contributors"]
+readme = "README.md"
+keywords = ["gamedev", "sdl2", "kmsdrm", "engine", "embedded"]
+categories = ["game-engines", "graphics"]
 
 [lib]
 name = "giochi_engine"

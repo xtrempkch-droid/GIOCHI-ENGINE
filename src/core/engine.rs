@@ -110,7 +110,7 @@ impl<'w> Engine<'w> {
     ///
     /// A janela é emprestada por `'w`; mantenha-a viva durante toda a execução.
     /// Use [`crate::platform::init_sdl`] e [`Window::new`] antes de chamar este
-    /// construtor, ou [`Engine::bootstrap`] para o fluxo completo.
+    /// construtor, ou [`bootstrap`] para o fluxo completo.
     pub fn new(
         sdl: Sdl,
         window: &'w mut Window,

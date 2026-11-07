@@ -46,6 +46,33 @@ cp target/aarch64-unknown-linux-gnu/release/giochi-demo /tmp/giochi-device/
 fusermount -u /tmp/giochi-device
 ```
 
+## O que o `cross` produz (e o que não produzir)
+
+`cross build --release --target aarch64-unknown-linux-gnu` gera um binário AArch64 válido,
+mas o SDL2 `bundled` dessa cadeia é uma **biblioteca compartilhada com backends de
+desktop**. Medido no artefato:
+
+```text
+NEEDED  libasound.so.2  libsndio.so.7  libwayland-egl.so.1  libwayland-client.so.0
+        libwayland-cursor.so.0  libxkbcommon.so.0  libdecor-0.so.0  libjack.so.0
+        libpipewire-0.3.so.0  libpulse.so.0  libsamplerate.so.0  libm.so.6  libc.so.6
+```
+
+Nenhuma dessas bibliotecas existe em uma imagem Buildroot: distribuir esse `libSDL2-2.0.so.0`
+faz o binário falhar com `error while loading shared libraries: libsndio.so.7`. Por isso o
+release **não** empacota o SDL2 do cross; o binário é ligado ao `libSDL2-2.0.so.0` do
+dispositivo (validado no R35S com SDL2 2.28.5 e `SDL_VIDEODRIVER=kmsdrm`).
+
+Para um alvo embarcado, prefira uma das opções:
+
+1. **Feature `sdl2-system`** contra um sysroot montado do próprio aparelho (seção acima) —
+   é a opção validada e a que gera binário que só depende de `libSDL2`/`libc`/`libgcc_s`.
+2. **SDK da distribuição** com `libsdl2-dev`, `libsdl2-image-dev`, `libsdl2-mixer-dev`,
+   `libsdl2-ttf-dev`, `libdrm-dev`, `libgbm-dev` e `libegl1-mesa-dev` instalados para ARM64.
+
+Se o SDL2 do alvo estiver fora do caminho padrão, rode com
+`LD_LIBRARY_PATH=/caminho/lib giochi-demo`.
+
 ## Dependências de runtime
 
 No dispositivo, verifique a disponibilidade e compatibilidade de:
@@ -58,6 +85,9 @@ No dispositivo, verifique a disponibilidade e compatibilidade de:
 
 As extensões SDL2 são ligadas ao sistema; a opção `bundled` compila apenas o SDL2 principal.
 Distribuições alvo devem oferecer as bibliotecas SDL extension compatíveis.
+
+O release anexa binários e exemplos em `giochi-engine-<versão>-aarch64-unknown-linux-gnu.tar.gz`
+(com `packaging/LEIA-ME.txt`), a `rlib` para consumo como crate e um `SHA256SUMS`.
 
 ## Build contra o sysroot do dispositivo (validado em R35S)
 

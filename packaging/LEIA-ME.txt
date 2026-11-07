@@ -1,0 +1,36 @@
+giochi-engine — binários ARM64 (aarch64-unknown-linux-gnu)
+=========================================================
+
+Requisitos no dispositivo
+-------------------------
+  - SDL2 >= 2.26 compilado com o backend de vídeo KMSDRM
+  - SDL2_image, SDL2_mixer e SDL2_ttf
+  - libdrm, libgbm e EGL/GLES (usados pelo KMSDRM)
+  - acesso a /dev/dri/card* e permissão nos grupos input/video
+
+Conteúdo
+--------
+  bin/giochi-demo          demonstração mínima (janela e Escape)
+  bin/giochi-hello_rect    primitivas e animação
+  bin/giochi-moving_sprite textura procedural controlada pelo jogador
+  bin/giochi-input_test    teclado, mouse e gamepad
+  bin/giochi-audio_test    tons sintetizados (Espaço/Enter)
+  bin/giochi-mini_game     Pong jogável (teste de fumaça completo)
+
+Execução em console (sem X11/Wayland)
+-------------------------------------
+  chmod +x bin/*
+  SDL_VIDEODRIVER=kmsdrm ./bin/giochi-demo
+
+Observações
+-----------
+  - O binário é ligado dinamicamente ao SDL2 do sistema (`libSDL2-2.0.so.0`).
+    Não incluímos o SDL2 `bundled` porque ele é compilado com backends de
+    desktop (sndio, wayland, jack, pipewire, pulse) ausentes em imagens
+    embarcadas.
+  - Se o SDL2 da imagem não tiver backend de áudio, a engine registra o aviso
+    e segue sem som; os jogos não falham.
+  - SDL2 instalado fora do caminho padrão:
+        LD_LIBRARY_PATH=/caminho/lib ./bin/giochi-demo
+  - Para build contra o SDL2 da própria imagem, use a feature `sdl2-system`
+    (ver docs/CROSS_COMPILE.md no repositório).

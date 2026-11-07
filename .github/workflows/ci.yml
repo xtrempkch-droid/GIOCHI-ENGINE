@@ -58,13 +58,64 @@ jobs:
       - name: Build release
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            cross build --release --target "${{ matrix.target }}"
+            cross build --locked --release --target "${{ matrix.target }}" --all-targets
           else
-            cargo build --release --target "${{ matrix.target }}"
+            cargo build --locked --release --target "${{ matrix.target }}" --all-targets
           fi
       - name: Check system SDL2 feature
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: cargo check --no-default-features --features sdl2-system --all-targets
+        run: |
+          cargo check --locked --no-default-features --features sdl2-system --all-targets
+          cargo doc --locked --no-default-features --features sdl2-system --no-deps
+
+  docs:
+    name: Documentação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: docs
+      - name: Install native SDL2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config cmake \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+      - name: Build rustdoc without warnings
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --locked --no-deps --document-private-items
+      - name: Check links in Markdown
+        run: |
+          # Verifica se links relativos em Markdown apontam para arquivos existentes.
+          issues=0
+          for doc in README.md docs/*.md; do
+            dir=$(dirname "$doc")
+            while read -r link; do
+              case "$link" in
+                http*|"#"*|mailto:*) continue ;;
+              esac
+              target="$dir/${link%%#*}"
+              if [ ! -f "$target" ]; then
+                echo "link quebrado: $doc -> $link"
+                issues=1
+              fi
+            done < <(grep -oE '\]\([^)]+\)' "$doc" | sed -E 's/^\]\(//; s/\)$//')
+          done
+          exit "$issues"
+
+  workflows:
+    name: Workflows (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
 
   msrv:
     name: Rust 1.80 MSRV

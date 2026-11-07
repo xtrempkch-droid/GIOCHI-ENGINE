@@ -58,6 +58,27 @@
 - A zona morta padrão dos analógicos é 0.2, configurável com `GamepadState::set_deadzone`. O
   controle é declarado antes do subsistema no struct para ser liberado primeiro.
 
+## Release e empacotamento
+
+- O release usa `cross` para produzir binário e exemplos AArch64, mas **não distribui o
+  `libSDL2-2.0.so.0` do `bundled`**: medido no artefato, ele depende de `libsndio`, `libwayland-*`,
+  `libxkbcommon`, `libdecor`, `libjack`, `libpipewire`, `libpulse` e `libsamplerate`, ausentes em
+  imagens Buildroot. Um teste real no R35S confirmou a falha de carregamento
+  (`libsndio.so.7: cannot open shared object file`) e, sem essa biblioteca no pacote, o mesmo
+  binário roda com o SDL2 do sistema.
+- Tentativa descartada: desligar os backends de desktop via `SDL2_TOOLCHAIN` + arquivo CMake
+  próprio. O `sdl2-sys` substitui `CMAKE_TOOLCHAIN_FILE`, o que perde o toolchain do `cross`
+  (CMake passa a usar o compilador nativo e gera uma `libSDL2` x86-64 dentro do build ARM64).
+  Encadear o toolchain por `include($ENV{CMAKE_TOOLCHAIN_FILE})` não restaurou o compilador.
+  Como a opção `sdl2-system` já produz o artefato correto e está validada em hardware, o caminho
+  foi removido em vez de mantido como mecanismo frágil.
+- O passo de verificação do release falha se algum arquivo do pacote não for `ARM aarch64` ou se
+  houver qualquer binário `x86-64` — foi essa checagem que detectou a poluição acima.
+- `--lib --bins --examples` (e não `--all-targets`) no release: testes não vão para o pacote e a
+  `rlib` é reunida explicitamente, com fallback para `deps/`.
+- O workflow aceita `workflow_dispatch` para gerar o pacote como artefato de pré-visualização sem
+  publicar Release, permitindo validar empacotamento antes de criar a tag.
+
 ## Fachada, cenas e lifetimes
 
 - `Engine::new(sdl, &mut window, config)` recebe a janela emprestada em vez de criá-la. A
