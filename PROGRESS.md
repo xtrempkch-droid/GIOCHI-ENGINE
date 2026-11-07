@@ -211,6 +211,11 @@ Data: 2026-11-06
 - PRs do Dependabot #1 (rust-toolchain 1.120.0) e #5 (glam 0.34.2) fechados por quebrarem o gate.
 - Relatório técnico movido da raiz para `docs/relatorio-tecnico-arm64.md`, com nome normalizado e
   nota indicando que é documento histórico.
+- Cobertura passou a ser medida no CI (job `Cobertura`, `cargo-llvm-cov`): 45 testes, 71,13% de
+  regiões e 73,40% de linhas; o relatório LCOV fica como artefato e o resumo no *step summary*.
+- Notas da Release corrigidas: a `v0.1.0` foi publicada sem conteúdo (dois "Full Changelog"
+  idênticos) porque `generate_release_notes` foi usado sem corpo. O workflow agora extrai a seção
+  da versão do `CHANGELOG.md` e só cai nas notas autogeradas se a versão não estiver lá.
 
 ## Bloqueios / pendências
 
@@ -219,7 +224,7 @@ Data: 2026-11-06
 - Cobertura unitária ampliada: `math` (interseção, limites, cor) e `assets` (`CacheStats`,
   `AssetManager`, `clear`) ganharam testes próprios. `platform` continua coberto apenas pela
   integração, porque o SDL2 admite um único contexto por processo e os testes de janela já
-  serializam esse uso. Não há medição de cobertura no CI.
+  serializam esse uso.
 - PRs #2/#3/#4 do Dependabot (checkout, upload-artifact, setup-qemu) seguem abertos; exigem
   Node 24 no runner, por isso o CI emite aviso de deprecação do Node 20.
 - Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem

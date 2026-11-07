@@ -3,6 +3,14 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Não publicado]
+
+### Corrigido
+
+- Release publicada sem conteúdo: o workflow agora extrai a seção da versão do `CHANGELOG.md` e
+  usa as notas autogeradas do GitHub apenas como fallback, evitando o "Full Changelog" duplicado.
+  O nome da Release também passou a seguir a tag (`Giochi Engine vX.Y.Z`).
+
 ## [0.1.0] - 2026-11-06
 
 Primeira versão funcional da engine, validada em hardware ARM64 com KMSDRM.

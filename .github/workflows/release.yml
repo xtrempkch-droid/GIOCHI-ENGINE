@@ -94,6 +94,34 @@ jobs:
             exit 1
           fi
 
+      # Extrai a seção da versão a partir do CHANGELOG. Sem isso a Release
+      # publicaria apenas o "Full Changelog" autogerado (e duplicado) pelo
+      # GitHub, perdendo o conteúdo curado do changelog.
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        if: github.event_name == 'push'
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          body="dist/release-notes.md"
+
+          awk -v ver="$version" '
+            $0 ~ "^## \\[" ver "\\]" { capture = 1; next }
+            capture && /^## \[/     { exit }
+            capture                 { print }
+          ' CHANGELOG.md > "$body"
+
+          if [ -s "$body" ]; then
+            link="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${GITHUB_REF_NAME}"
+            printf '\n%s\n' "$link" >> "$body"
+            printf 'notes_path=%s\n' "$body" >> "$GITHUB_OUTPUT"
+            printf 'has_notes=true\n' >> "$GITHUB_OUTPUT"
+            echo "notas extraídas da versão $version:"
+            cat "$body"
+          else
+            echo "::warning::versão $version não encontrada no CHANGELOG; usando notas autogeradas"
+            printf 'has_notes=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload build preview
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
@@ -106,8 +134,10 @@ jobs:
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          name: Giochi Engine ${{ github.ref_name }}
           draft: false
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'dist/release-notes.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: |
             dist/*.tar.gz
             dist/SHA256SUMS

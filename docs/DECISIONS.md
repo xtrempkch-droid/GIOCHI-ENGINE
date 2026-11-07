@@ -105,6 +105,14 @@
   `rlib` é reunida explicitamente, com fallback para `deps/`.
 - O workflow aceita `workflow_dispatch` para gerar o pacote como artefato de pré-visualização sem
   publicar Release, permitindo validar empacotamento antes de criar a tag.
+- As notas da Release vêm da seção correspondente do `CHANGELOG.md`, extraída por `awk` para
+  `dist/release-notes.md`, com um link de *Full Changelog* no fim. O `generate_release_notes` só
+  é usado como **fallback** quando a versão não está no changelog: é preciso escolher um dos dois,
+  porque o GitHub **anexa** as notas autogeradas ao corpo informado. Na `v0.1.0` os dois caminhos
+  rodaram juntos e a Release ficou só com dois links "Full Changelog" idênticos e sem conteúdo.
+  A ausência no changelog gera `::warning::` em vez de falhar, para não travar uma publicação já
+  empacotada; o nome da Release passou a ser `Giochi Engine <tag>` em vez do campo livre digitado
+  à mão.
 
 ## Fachada, cenas e lifetimes
 
