@@ -27,7 +27,7 @@ jobs:
           key: ${{ matrix.target }}
       - name: Enable ARM64 emulation
         if: matrix.target == 'aarch64-unknown-linux-gnu'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       - name: Install native SDL2 dependencies
