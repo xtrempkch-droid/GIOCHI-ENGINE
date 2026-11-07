@@ -95,8 +95,8 @@ Data: 2026-11-06
 - `Cargo.lock` é versionado; `.gitignore` não o exclui.
 - O MSRV ficou em Rust 1.80 (dentro de `1.75+`), porque SDL2 0.38 não compila com Rust 1.75 ou
   1.77. A decisão e as verificações estão registradas em `docs/DECISIONS.md`.
-- `actionlint` não estava instalado no ambiente; os workflows foram revisados manualmente e o CI
-  valida compilação e testes.
+- `actionlint` foi executado posteriormente (v1.7.7) em `ci.yml`, `release.yml` e
+  `cross-compile.yml`: nenhum erro. O CI também valida compilação e testes.
 
 ## Validação em hardware (R35S / RK3326)
 
@@ -126,7 +126,6 @@ Data: 2026-11-06
   aparelho, que não depende de emulação).
 - Habilitar ALSA e PNG no Buildroot do GIOCHI KONSOL OS para que áudio real e assets PNG funcionem
   sem bibliotecas extras.
-- `actionlint` não está instalado neste ambiente.
 - O floating point de gamepad/sticks usa os eixos crus do SDL2; mapeamentos específicos de
   hardware (ex.: inversão de eixo) ainda podem ser adicionados em uma fase de polimento.
 
